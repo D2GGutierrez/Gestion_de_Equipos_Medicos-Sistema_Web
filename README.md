@@ -1,2 +1,2 @@
-# Gestion_de_Equipos_Medicos-Sistema_Web
+## Gestión de Equipos Médicos — Sistema Web (Django)
 Django Framework
