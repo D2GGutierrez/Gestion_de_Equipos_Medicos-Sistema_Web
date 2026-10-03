@@ -1,0 +1,13 @@
+{# Datos de un Suministro: el modelo intermedio del N:M Producto - Proveedor. #}
+{# Espera `suministro`. En eliminar_suministro.html llega como `objeto`, por eso allí va con `with`. #}
+<div class="d-flex justify-content-between align-items-center">
+    <strong class="text-dark">{{ suministro.proveedor.nombre_empresa }}</strong>
+    {% if suministro.es_proveedor_principal %}
+        <span class="badge bg-success">Principal</span>
+    {% endif %}
+</div>
+<small class="text-muted d-block mt-1">
+    Precio de compra: ${{ suministro.precio_compra|floatformat:2 }}
+    · Entrega en {{ suministro.dias_entrega_promedio }} día{{ suministro.dias_entrega_promedio|pluralize }}
+    · Último pedido: {{ suministro.fecha_ultimo_pedido|date:"d/m/Y" }}
+</small>

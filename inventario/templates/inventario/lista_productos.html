@@ -1,0 +1,74 @@
+{% extends "inventario/base.html" %}
+{% block title %}Listado de Productos{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        {# |length cuenta el queryset sin pedirle nada más a la vista. #}
+        <h2>
+            Listado de Productos
+            <small class="text-muted fs-6">
+                {{ productos|length }} producto{{ productos|length|pluralize }}
+            </small>
+        </h2>
+        <a href="{% url 'crear_producto' %}" class="btn btn-primary">+ Crear Nuevo Producto</a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover border align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>SKU</th>
+                    <th>Nombre</th>
+                    <th>Marca</th>
+                    <th>Precio Base</th>
+                    <th>Categoría (1:N)</th>
+                    <th>Ficha Técnica (1:1)</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for producto in productos %}
+                <tr>
+                    {# |upper normaliza el SKU en pantalla; en la base de datos no cambia nada. #}
+                    <td><span class="badge bg-secondary">{{ producto.codigo_sku|upper }}</span></td>
+                    <td class="fw-bold">{{ producto.nombre }}</td>
+                    <td>{{ producto.marca }}</td>
+                    {# |floatformat:2 fija los dos decimales del DecimalField. #}
+                    <td>${{ producto.precio_base|floatformat:2 }}</td>
+
+                    {# Acceso directo 1:N, ya resuelto con select_related en la vista. #}
+                    <td>
+                        {% if producto.categoria %}
+                            <a href="{% url 'detalle_categoria' producto.categoria.pk %}" class="badge bg-info text-dark text-decoration-none">{{ producto.categoria.nombre }}</a>
+                        {% else %}
+                            <span class="text-muted">Sin categoría</span>
+                        {% endif %}
+                    </td>
+
+                    {# Acceso directo 1:1 vía related_name. Si no hay ficha, el motor lo trata como vacío. #}
+                    <td>
+                        {% if producto.ficha_tecnica %}
+                            {# |truncatechars recorta la especificación para que la fila no crezca. #}
+                            <small>{{ producto.ficha_tecnica.especificaciones|truncatechars:45 }}</small>
+                        {% else %}
+                            <span class="badge bg-light text-muted border">Sin ficha</span>
+                        {% endif %}
+                    </td>
+
+                    <td class="text-center">
+                        {# {% url ... as ... %} guarda la ruta en una variable para pasársela al fragmento. #}
+                        {% url 'editar_producto' producto.pk as url_editar %}
+                        {% url 'eliminar_producto' producto.pk as url_eliminar %}
+                        {% include "inventario/partials/_acciones.html" %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center text-muted py-4">No hay productos registrados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

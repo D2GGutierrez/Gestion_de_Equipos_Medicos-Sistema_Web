@@ -1,0 +1,60 @@
+{% extends "inventario/base.html" %}
+{% block title %}Productos y Proveedores{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">
+        Catálogo de Productos y sus Proveedores
+        <small class="text-muted fs-6">{{ productos|length }} producto{{ productos|length|pluralize }}</small>
+    </h2>
+
+    <div class="row">
+        {% for producto in productos %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 shadow-sm border-0 bg-light">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h4 class="card-title text-primary m-0">{{ producto.nombre }}</h4>
+                        <span class="badge bg-dark">{{ producto.codigo_sku|upper }}</span>
+                    </div>
+
+                    <p class="text-muted mb-3">
+                        {# |default cubre los productos que todavía no tienen categoría. #}
+                        <strong>Categoría:</strong> {{ producto.categoria.nombre|default:"Sin categoría" }}
+                        · <strong>Precio base:</strong> ${{ producto.precio_base|floatformat:2 }}
+                    </p>
+
+                    <div class="d-flex justify-content-between align-items-center border-bottom pb-2">
+                        {# suministro_set es el modelo intermedio del N:M; la vista ya lo trajo con prefetch_related. #}
+                        <h6 class="m-0">
+                            Proveedores asociados
+                            ({{ producto.suministro_set.all|length }})
+                        </h6>
+                        <a href="{% url 'crear_suministro' producto.pk %}" class="btn btn-sm btn-outline-primary">+ Agregar</a>
+                    </div>
+
+                    <div class="list-group list-group-flush">
+                        {% for suministro in producto.suministro_set.all %}
+                        <div class="list-group-item bg-white rounded mb-2 border">
+                            {# Mismo fragmento que usa la pantalla de confirmación de borrado. #}
+                            {% include "inventario/partials/_suministro_item.html" %}
+                            <div class="mt-2 text-end">
+                                {% url 'editar_suministro' suministro.pk as url_editar %}
+                                {% url 'eliminar_suministro' suministro.pk as url_eliminar %}
+                                {% include "inventario/partials/_acciones.html" %}
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted small fst-italic my-2">No hay proveedores registrados para este producto.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info text-center">No hay productos disponibles.</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
