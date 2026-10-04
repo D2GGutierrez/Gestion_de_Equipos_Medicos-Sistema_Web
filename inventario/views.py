@@ -1,9 +1,14 @@
-from django.db import IntegrityError
+import calendar
+from datetime import date
+
+from django.contrib import messages
+from django.db import IntegrityError, transaction
+from django.db.models import F
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
 from .models import Producto, Cliente, Usuario, EquipoInstalado, TicketSoporte, Suministro, Proveedor, Categoria, FichaTecnica
-from .forms import ProductoForm, ClienteForm, UsuarioForm, EquipoInstaladoForm, TicketSoporteForm, SuministroForm
+from .forms import ProductoForm, ClienteForm, UsuarioForm, EquipoInstaladoForm, TicketSoporteForm, SuministroForm, RegistrarInstalacionForm
 
 
 # Vista para Listar Productos (Optimizado con select_related para 1:1 y 1:N)
@@ -331,3 +336,61 @@ def eliminar_suministro(request, pk):
         return redirect('productos_proveedores')
 
     return render(request, 'inventario/eliminar_suministro.html', {'objeto': suministro})
+
+
+class StockInsuficiente(Exception):
+    pass
+
+
+def sumar_meses(fecha, meses):
+    mes = fecha.month - 1 + meses
+    anio = fecha.year + mes // 12
+    mes = mes % 12 + 1
+    dia = min(fecha.day, calendar.monthrange(anio, mes)[1])
+    return date(anio, mes, dia)
+
+
+# Vista para Registrar una Instalación: crea un EquipoInstalado por cada número de serie (INSERT)
+# y descuenta esa cantidad del stock del Producto (UPDATE). Todo o nada con transaction.atomic().
+def registrar_instalacion(request):
+    if request.method == 'POST':
+        form = RegistrarInstalacionForm(request.POST)
+        if form.is_valid():
+            producto = form.cleaned_data['producto']
+            cliente = form.cleaned_data['cliente']
+            fecha = form.cleaned_data['fecha_instalacion']
+            series = form.cleaned_data['numeros_serie']
+            cantidad = len(series)
+
+            try:
+                with transaction.atomic():
+                    # 1) INSERT de los equipos instalados
+                    for serie in series:
+                        EquipoInstalado.objects.create(
+                            numero_serie=serie, producto=producto, cliente=cliente,
+                            fecha_instalacion=fecha,
+                            fin_garantia=sumar_meses(fecha, producto.meses_garantia),
+                        )
+
+                    # 2) UPDATE del stock con F().
+                    filas = Producto.objects.filter(pk=producto.pk, stock__gte=cantidad).update(stock=F('stock') - cantidad)
+                    if filas == 0:
+                        
+                        raise StockInsuficiente
+            except StockInsuficiente:
+                producto.refresh_from_db()
+                form.add_error(None, f'Stock insuficiente de "{producto.nombre}": se solicitaron {cantidad} '
+                                     f'unidad(es) y solo hay {producto.stock}. No se registró ningún cambio.')
+            else:
+                # Patrón Post/Redirect/Get: tras el exito se redirige para evitar reenvíos.
+                messages.success(request, f'Instalación registrada: {cantidad} equipo(s) de "{producto.nombre}" '
+                                          f'para {cliente}.')
+                return redirect('registrar_instalacion')
+    else:
+        form = RegistrarInstalacionForm(initial={'fecha_instalacion': timezone.now().date()})
+
+    return render(request, 'inventario/registrar_instalacion.html', {
+        'form': form,
+        'productos': Producto.objects.order_by('nombre'),
+        'ultimos_equipos': EquipoInstalado.objects.select_related('producto', 'cliente').order_by('-id')[:5],
+    })

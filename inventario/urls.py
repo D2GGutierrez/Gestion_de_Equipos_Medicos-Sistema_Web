@@ -32,6 +32,7 @@ urlpatterns = [
     path('equipos/', views.lista_equipos, name='lista_equipos'),
     path('equipos/<int:pk>/editar/', views.editar_equipo, name='editar_equipo'),
     path('equipos/<int:pk>/eliminar/', views.eliminar_equipo, name='eliminar_equipo'),
+    path('equipos/instalar/', views.registrar_instalacion, name='registrar_instalacion'),
 
     # Tickets de Soporte (RF-05)
     path('tickets/', views.lista_tickets, name='lista_tickets'),

@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from inventario.models import Categoria, Producto, Proveedor, Suministro
+from inventario.models import Categoria, Cliente, Producto, Proveedor, Suministro
 
 
 # Relación 1:N -> una Categoría agrupa muchos Productos
@@ -13,14 +13,14 @@ CATEGORIAS = [
     ('Soporte Vital', 'Equipos críticos para mantener las funciones vitales del paciente.'),
 ]
 
-# Entidad principal: Producto (sku, nombre, marca, modelo, precio_base, meses_garantia, categoria)
+# Entidad principal: Producto (sku, nombre, marca, modelo, precio_base, meses_garantia, stock, categoria)
 PRODUCTOS = [
-    ('ECO-MIN-DC70', 'Ecógrafo Doppler Color', 'Mindray', 'DC-70', '185000.00', 24, 'Diagnóstico por Imagen'),
-    ('RX-SIE-MOB3', 'Rayos X Portátil', 'Siemens', 'Mobilett Mira Max', '320000.00', 36, 'Diagnóstico por Imagen'),
-    ('MON-PHI-MX450', 'Monitor Multiparámetro', 'Philips', 'IntelliVue MX450', '42500.00', 24, 'Monitoreo de Pacientes'),
-    ('OXI-NON-7500', 'Pulsioxímetro de Mesa', 'Nonin', '7500', '3800.00', 12, 'Monitoreo de Pacientes'),
-    ('VEN-DRA-V500', 'Ventilador Mecánico', 'Dräger', 'Evita V500', '275000.00', 36, 'Soporte Vital'),
-    ('DES-ZOL-RS1', 'Desfibrilador Bifásico', 'ZOLL', 'R Series', '68000.00', 24, 'Soporte Vital'),
+    ('ECO-MIN-DC70', 'Ecógrafo Doppler Color', 'Mindray', 'DC-70', '185000.00', 24, 8, 'Diagnóstico por Imagen'),
+    ('RX-SIE-MOB3', 'Rayos X Portátil', 'Siemens', 'Mobilett Mira Max', '320000.00', 36, 2, 'Diagnóstico por Imagen'),
+    ('MON-PHI-MX450', 'Monitor Multiparámetro', 'Philips', 'IntelliVue MX450', '42500.00', 24, 15, 'Monitoreo de Pacientes'),
+    ('OXI-NON-7500', 'Pulsioxímetro de Mesa', 'Nonin', '7500', '3800.00', 12, 0, 'Monitoreo de Pacientes'),
+    ('VEN-DRA-V500', 'Ventilador Mecánico', 'Dräger', 'Evita V500', '275000.00', 36, 3, 'Soporte Vital'),
+    ('DES-ZOL-RS1', 'Desfibrilador Bifásico', 'ZOLL', 'R Series', '68000.00', 24, 5, 'Soporte Vital'),
 ]
 
 # Proveedores (ruc_nit, nombre_empresa, contacto, telefono)
@@ -48,9 +48,16 @@ SUMINISTROS = [
     ('DES-ZOL-RS1', '20600112233', '57800.00', 5, False),
 ]
 
+# Clientes (numero_identificacion, razon_social, email_contacto, telefono, direccion_fiscal)
+CLIENTES = [
+    ('20100012345', 'Clínica San Gabriel S.A.', 'compras@sangabriel.pe', '014401122', 'Av. La Marina 1520, San Miguel, Lima'),
+    ('20200067890', 'Hospital Regional de Arequipa', 'logistica@hrarequipa.gob.pe', '054382211', 'Av. Daniel Alcides Carrión 505, Arequipa'),
+    ('20300054321', 'Centro Médico Santa Rosa E.I.R.L.', 'administracion@cmsantarosa.pe', '044255667', 'Jr. Pizarro 330, Trujillo'),
+]
+
 
 class Command(BaseCommand):
-    help = 'Registra datos de prueba: Categorías (1:N), Productos, Proveedores y Suministros (N:M through).'
+    help = 'Registra datos de prueba: Categorías (1:N), Productos, Proveedores, Suministros (N:M through) y Clientes.'
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -62,12 +69,12 @@ class Command(BaseCommand):
             )
 
         productos = {}
-        for sku, nombre, marca, modelo, precio, garantia, categoria in PRODUCTOS:
+        for sku, nombre, marca, modelo, precio, garantia, stock, categoria in PRODUCTOS:
             productos[sku], _ = Producto.objects.update_or_create(
                 codigo_sku=sku,
                 defaults={
                     'nombre': nombre, 'marca': marca, 'modelo': modelo,
-                    'precio_base': Decimal(precio), 'meses_garantia': garantia,
+                    'precio_base': Decimal(precio), 'meses_garantia': garantia, 'stock': stock,
                     'categoria': categorias[categoria],
                 },
             )
@@ -88,7 +95,15 @@ class Command(BaseCommand):
                 },
             )
 
+        for ruc, razon_social, email, telefono, direccion in CLIENTES:
+            Cliente.objects.update_or_create(
+                numero_identificacion=ruc,
+                defaults={'razon_social': razon_social, 'email_contacto': email,
+                          'telefono': telefono, 'direccion_fiscal': direccion},
+            )
+
         self.stdout.write(self.style.SUCCESS(
             f'Datos registrados: {Categoria.objects.count()} categorías, {Producto.objects.count()} productos, '
-            f'{Proveedor.objects.count()} proveedores, {Suministro.objects.count()} suministros.'
+            f'{Proveedor.objects.count()} proveedores, {Suministro.objects.count()} suministros, '
+            f'{Cliente.objects.count()} clientes.'
         ))

@@ -11,6 +11,7 @@ class ProductoForm(forms.ModelForm):
                     'modelo',
                     'precio_base',
                     'meses_garantia',
+                    'stock',
                     'categoria',
                 ]
 
@@ -49,3 +50,33 @@ class SuministroForm(forms.ModelForm):
     class Meta:
         model = Suministro
         fields = ['proveedor', 'precio_compra', 'dias_entrega_promedio', 'es_proveedor_principal']
+
+
+# Formulario de la operación "Registrar Instalación": no es un ModelForm porque una sola
+# operación crea varios EquipoInstalado y descuenta el stock del Producto.
+class RegistrarInstalacionForm(forms.Form):
+    producto = forms.ModelChoiceField(queryset=Producto.objects.order_by('nombre'))
+    cliente = forms.ModelChoiceField(queryset=Cliente.objects.filter(activo=True).order_by('razon_social'))
+    fecha_instalacion = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
+    numeros_serie = forms.CharField(
+        label='Números de serie',
+        widget=forms.Textarea(attrs={'rows': 4}),
+        help_text='Uno por línea. La cantidad de equipos a instalar es la cantidad de series.',
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Muestra el stock disponible en cada opción del desplegable
+        self.fields['producto'].label_from_instance = lambda p: f'{p.nombre} - {p.modelo} (stock: {p.stock})'
+        for field in self.fields.values():
+            es_select = isinstance(field.widget, forms.Select)
+            field.widget.attrs['class'] = 'form-select' if es_select else 'form-control'
+
+    def clean_numeros_serie(self):
+        series = [s.strip() for s in self.cleaned_data['numeros_serie'].splitlines() if s.strip()]
+        if len(series) != len(set(series)):
+            raise forms.ValidationError('Hay números de serie repetidos.')
+        existentes = list(EquipoInstalado.objects.filter(numero_serie__in=series).values_list('numero_serie', flat=True))
+        if existentes:
+            raise forms.ValidationError(f'Ya están registrados: {", ".join(existentes)}.')
+        return series

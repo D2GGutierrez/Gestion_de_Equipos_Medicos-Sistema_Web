@@ -21,6 +21,7 @@
                     <th>Nombre</th>
                     <th>Marca</th>
                     <th>Precio Base</th>
+                    <th class="text-center">Stock</th>
                     <th>Categoría (1:N)</th>
                     <th>Ficha Técnica (1:1)</th>
                     <th class="text-center">Acciones</th>
@@ -35,6 +36,9 @@
                     <td>{{ producto.marca }}</td>
                     {# |floatformat:2 fija los dos decimales del DecimalField. #}
                     <td>${{ producto.precio_base|floatformat:2 }}</td>
+                    <td class="text-center">
+                        <span class="badge {% if producto.stock == 0 %}bg-danger{% elif producto.stock <= 3 %}bg-warning text-dark{% else %}bg-success{% endif %}">{{ producto.stock }}</span>
+                    </td>
 
                     {# Acceso directo 1:N, ya resuelto con select_related en la vista. #}
                     <td>
@@ -64,7 +68,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-4">No hay productos registrados.</td>
+                    <td colspan="8" class="text-center text-muted py-4">No hay productos registrados.</td>
                 </tr>
                 {% endfor %}
             </tbody>

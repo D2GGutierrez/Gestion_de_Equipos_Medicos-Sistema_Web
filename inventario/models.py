@@ -42,6 +42,7 @@ class Producto(models.Model):
     modelo = models.CharField(max_length=50)
     precio_base = models.DecimalField(max_digits=10, decimal_places=2)
     meses_garantia = models.IntegerField()
+    stock = models.PositiveIntegerField(default=0, help_text="Unidades disponibles en almacén")
 
     categoria = models.ForeignKey(
         Categoria,
