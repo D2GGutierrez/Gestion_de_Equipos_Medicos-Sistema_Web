@@ -6,6 +6,15 @@
 <h2>Panel de Tickets de Soporte (RF-05)</h2>
 
 <form class="filtros" method="get">
+    {# Vistas rápidas: métodos de TicketSoporteQuerySet. Se combinan con prioridad y estado. #}
+    <label for="vista">Vista:</label>
+    <select name="vista" id="vista">
+        <option value="" {% if not filtros.vista %}selected{% endif %}>Todos los tickets</option>
+        {% for valor, etiqueta in vistas %}
+        <option value="{{ valor }}" {% if filtros.vista == valor %}selected{% endif %}>{{ etiqueta }}</option>
+        {% endfor %}
+    </select>
+
     <label for="prioridad">Prioridad:</label>
     <select name="prioridad" id="prioridad">
         <option value="" {% if not filtros.prioridad %}selected{% endif %}>Todas</option>

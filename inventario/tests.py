@@ -1,12 +1,13 @@
 from datetime import date, timedelta
 from decimal import Decimal
 
+from django.db.models import Count
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
 from .models import (
-    Categoria, Cliente, EquipoInstalado, Producto, Proveedor, Suministro, TicketSoporte, Usuario,
+    Categoria, Cliente, EquipoInstalado, Producto, Proveedor, Suministro, TicketSoporte, TicketSoporteQuerySet, Usuario,
 )
 
 
@@ -301,3 +302,72 @@ class ReportePostventaTests(DatosBase):
         proveedor = r.context['proveedores'][0]
         self.assertEqual((proveedor['productos'], proveedor['como_principal'], proveedor['dias_entrega']), (2, 1, 15.5))
         self.assertContains(r, '15.5 días')  # floatformat:1 sobre el Avg
+
+
+class TicketSoporteQuerySetTests(DatosBase):
+
+    @classmethod
+    def setUpTestData(cls):
+        super().setUpTestData()
+        # TCK-1 (de DatosBase): MEDIA, ABIERTO, con técnico
+        cls.critico = TicketSoporte.objects.create(codigo_ticket='TCK-2', descripcion_falla='No enciende',
+                                                   equipo=cls.equipo_mes, prioridad='CRITICA', estado='EN_PROCESO')
+        cls.alta_resuelto = TicketSoporte.objects.create(codigo_ticket='TCK-3', descripcion_falla='Calibración',
+                                                         equipo=cls.equipo_antiguo, prioridad='ALTA',
+                                                         estado='RESUELTO', tecnico=cls.tecnico)
+        # Un ticket de un mes anterior (auto_now_add no deja fijar la fecha al crear)
+        cls.antiguo = TicketSoporte.objects.create(codigo_ticket='TCK-4', descripcion_falla='Ruido',
+                                                   equipo=cls.equipo_antiguo, prioridad='BAJA', estado='CERRADO')
+        TicketSoporte.objects.filter(pk=cls.antiguo.pk).update(fecha_creacion=timezone.now() - timedelta(days=60))
+
+    def codigos(self, qs):
+        return sorted(qs.values_list('codigo_ticket', flat=True))
+
+    def test_reglas_basicas(self):
+        self.assertEqual(self.codigos(TicketSoporte.objects.pendientes()), ['TCK-1', 'TCK-2'])
+        self.assertEqual(self.codigos(TicketSoporte.objects.atendidos()), ['TCK-3', 'TCK-4'])
+        self.assertEqual(self.codigos(TicketSoporte.objects.urgentes()), ['TCK-2', 'TCK-3'])
+        self.assertEqual(self.codigos(TicketSoporte.objects.sin_tecnico()), ['TCK-2', 'TCK-4'])
+        self.assertEqual(self.codigos(TicketSoporte.objects.de_tecnico(self.tecnico)), ['TCK-1', 'TCK-3'])
+        self.assertEqual(self.codigos(TicketSoporte.objects.creados_en_mes()), ['TCK-1', 'TCK-2', 'TCK-3'])
+
+    def test_metodos_encadenables(self):
+        self.assertEqual(self.codigos(TicketSoporte.objects.pendientes().urgentes()), ['TCK-2'])
+        self.assertEqual(self.codigos(TicketSoporte.objects.pendientes().urgentes().sin_tecnico()), ['TCK-2'])
+        self.assertEqual(self.codigos(TicketSoporte.objects.atendidos().urgentes().de_tecnico(self.tecnico)), ['TCK-3'])
+        self.assertEqual(self.codigos(TicketSoporte.objects.filter(equipo=self.equipo_mes).pendientes()), ['TCK-1', 'TCK-2'])
+
+    def test_con_detalle_una_sola_consulta(self):
+        with self.assertNumQueries(1):
+            [(t.equipo.cliente.razon_social, t.tecnico) for t in TicketSoporte.objects.con_detalle().recientes()]
+
+    def test_q_con_prefijo_desde_otro_modelo(self):
+        T = TicketSoporteQuerySet
+        tecnico = Usuario.objects.annotate(
+            pendientes=Count('tickets_asignados', filter=T.q_pendiente('tickets_asignados__')),
+        ).get(pk=self.tecnico.pk)
+        self.assertEqual(tecnico.pendientes, 1)
+
+    def test_lista_tickets_vistas(self):
+        casos = {
+            '': ['TCK-1', 'TCK-2', 'TCK-3', 'TCK-4'],
+            '?vista=pendientes': ['TCK-1', 'TCK-2'],
+            '?vista=urgentes': ['TCK-2'],
+            '?vista=sin_tecnico': ['TCK-2'],
+            '?vista=mes': ['TCK-1', 'TCK-2', 'TCK-3'],
+            '?vista=atendidos': ['TCK-3', 'TCK-4'],
+            '?vista=pendientes&prioridad=MEDIA': ['TCK-1'],
+        }
+        for query, esperado in casos.items():
+            with self.subTest(query=query):
+                r = self.client.get(reverse('lista_tickets') + query)
+                self.assertEqual(r.status_code, 200)
+                self.assertEqual(sorted(t.codigo_ticket for t in r.context['tickets']), esperado)
+
+    def test_reporte_postventa_usa_queryset(self):
+        r = self.client.get(reverse('reporte_postventa'))
+        self.assertEqual([t.codigo_ticket for t in r.context['urgentes_pendientes']], ['TCK-2'])
+        self.assertEqual((r.context['tickets']['pendientes'], r.context['tickets']['criticos_pendientes'],
+                          r.context['tickets']['sin_tecnico']), (2, 1, 1))
+        tecnico = r.context['tecnicos'][0]
+        self.assertEqual((tecnico.asignados, tecnico.pendientes, tecnico.urgentes, tecnico.atendidos), (2, 1, 0, 1))

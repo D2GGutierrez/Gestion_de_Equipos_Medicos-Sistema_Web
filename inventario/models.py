@@ -145,6 +145,59 @@ class EquipoInstalado(models.Model):
         return f"Serie: {self.numero_serie} - {self.cliente.razon_social}"
 
 
+# Reglas de negocio del soporte postventa. Los métodos devuelven un QuerySet y se pueden encadenar:
+#   TicketSoporte.objects.pendientes().urgentes().sin_tecnico()
+class TicketSoporteQuerySet(models.QuerySet):
+    ESTADOS_PENDIENTES = ['ABIERTO', 'EN_PROCESO']    # El cliente todavía espera una solución
+    ESTADOS_ATENDIDOS = ['RESUELTO', 'CERRADO']
+    PRIORIDADES_URGENTES = ['ALTA', 'CRITICA']        # Equipo médico detenido o con riesgo para el paciente
+
+    # Las reglas también como Q, para usarlas en Count(filter=...) desde otros modelos.
+    # 'prefijo' es la ruta hasta el ticket, p. ej. 'tickets_asignados__' desde Usuario.
+    @classmethod
+    def q_pendiente(cls, prefijo=''):
+        return models.Q(**{f'{prefijo}estado__in': cls.ESTADOS_PENDIENTES})
+
+    @classmethod
+    def q_atendido(cls, prefijo=''):
+        return models.Q(**{f'{prefijo}estado__in': cls.ESTADOS_ATENDIDOS})
+
+    @classmethod
+    def q_urgente(cls, prefijo=''):
+        return models.Q(**{f'{prefijo}prioridad__in': cls.PRIORIDADES_URGENTES})
+
+    def pendientes(self):
+        """Tickets abiertos o en proceso."""
+        return self.filter(self.q_pendiente())
+
+    def atendidos(self):
+        """Tickets resueltos o cerrados."""
+        return self.filter(self.q_atendido())
+
+    def urgentes(self):
+        """Tickets de prioridad alta o crítica."""
+        return self.filter(self.q_urgente())
+
+    def sin_tecnico(self):
+        """Tickets que nadie ha tomado todavía."""
+        return self.filter(tecnico__isnull=True)
+
+    def de_tecnico(self, tecnico):
+        return self.filter(tecnico=tecnico)
+
+    def creados_en_mes(self, fecha=None):
+        """Tickets reportados en el mes de 'fecha' (por defecto, el mes actual)."""
+        fecha = fecha or timezone.localdate()
+        return self.filter(fecha_creacion__year=fecha.year, fecha_creacion__month=fecha.month)
+
+    def con_detalle(self):
+        """Trae equipo, cliente y técnico en el mismo SELECT (evita el N+1 en los listados)."""
+        return self.select_related('equipo', 'equipo__cliente', 'tecnico')
+
+    def recientes(self):
+        return self.order_by('-fecha_creacion')
+
+
 class TicketSoporte(models.Model):
     PRIORIDADES = [
         ('BAJA', 'Baja'),
@@ -166,6 +219,8 @@ class TicketSoporte(models.Model):
     
     equipo = models.ForeignKey(EquipoInstalado, on_delete=models.CASCADE, related_name='tickets')
     tecnico = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True, blank=True, related_name='tickets_asignados')
+
+    objects = TicketSoporteQuerySet.as_manager()
 
     def __str__(self):
         return f"{self.codigo_ticket} - {self.estado}"

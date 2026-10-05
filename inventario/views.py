@@ -7,7 +7,7 @@ from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Max
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
-from .models import Producto, ProductoQuerySet, Cliente, Usuario, EquipoInstalado, TicketSoporte, Suministro, Proveedor, Categoria, FichaTecnica
+from .models import Producto, ProductoQuerySet, TicketSoporteQuerySet, Cliente, Usuario, EquipoInstalado, TicketSoporte, Suministro, Proveedor, Categoria, FichaTecnica
 from .forms import ProductoForm, ClienteForm, UsuarioForm, EquipoInstaladoForm, TicketSoporteForm, SuministroForm, RegistrarInstalacionForm
 
 
@@ -244,8 +244,22 @@ def eliminar_equipo(request, pk):
 
 # Vista para Consultar Panel de Tickets (RF-05)
 # Filtros soportados: prioridad y estado del ticket
+# Vistas rápidas del panel: cada una es una regla de negocio de TicketSoporteQuerySet (se pueden encadenar)
+VISTAS_TICKETS = {
+    'pendientes': ('Pendientes', lambda qs: qs.pendientes()),
+    'urgentes': ('Urgentes sin resolver', lambda qs: qs.pendientes().urgentes()),
+    'sin_tecnico': ('Pendientes sin técnico', lambda qs: qs.pendientes().sin_tecnico()),
+    'mes': ('Reportados este mes', lambda qs: qs.creados_en_mes()),
+    'atendidos': ('Atendidos', lambda qs: qs.atendidos()),
+}
+
+
 def lista_tickets(request):
-    tickets = TicketSoporte.objects.select_related('equipo', 'equipo__cliente', 'tecnico').all().order_by('-fecha_creacion')
+    tickets = TicketSoporte.objects.con_detalle()
+
+    vista = request.GET.get('vista')
+    if vista in VISTAS_TICKETS:
+        tickets = VISTAS_TICKETS[vista][1](tickets)
 
     prioridad = request.GET.get('prioridad')
     estado = request.GET.get('estado')
@@ -256,10 +270,12 @@ def lista_tickets(request):
         tickets = tickets.filter(estado=estado)
 
     return render(request, 'inventario/lista_tickets.html', {
-        'tickets': tickets,
+        'tickets': tickets.recientes(),
         'prioridades': TicketSoporte.PRIORIDADES,
         'estados': TicketSoporte.ESTADOS,
+        'vistas': [(clave, etiqueta) for clave, (etiqueta, _) in VISTAS_TICKETS.items()],
         'filtros': {
+            'vista': vista,
             'prioridad': prioridad,
             'estado': estado,
         },
@@ -476,7 +492,8 @@ def reporte(request):
 
 
 # Reportes de la investigación: soporte postventa (garantías, tickets, técnicos y proveedores)
-TICKET_PENDIENTE = Q(estado__in=['ABIERTO', 'EN_PROCESO'])
+# Reglas de ticket pendiente/urgente/atendido como Q, definidas una sola vez en TicketSoporteQuerySet
+T = TicketSoporteQuerySet
 DIAS_AVISO_GARANTIA = 90
 
 
@@ -496,9 +513,9 @@ def reporte_postventa(request):
 
     tickets = TicketSoporte.objects.aggregate(
         total=Count('id'),
-        pendientes=Count('id', filter=TICKET_PENDIENTE),
-        criticos_pendientes=Count('id', filter=TICKET_PENDIENTE & Q(prioridad__in=['ALTA', 'CRITICA'])),
-        sin_tecnico=Count('id', filter=TICKET_PENDIENTE & Q(tecnico__isnull=True)),
+        pendientes=Count('id', filter=T.q_pendiente()),
+        criticos_pendientes=Count('id', filter=T.q_pendiente() & T.q_urgente()),
+        sin_tecnico=Count('id', filter=T.q_pendiente() & Q(tecnico__isnull=True)),
     )
     tickets['pct_pendientes'] = tickets['pendientes'] * 100 / tickets['total'] if tickets['total'] else 0
 
@@ -508,29 +525,30 @@ def reporte_postventa(request):
     # Reporte 2 · annotate(): carga de trabajo de cada técnico
     tecnicos = Usuario.objects.filter(rol='TECNICO').annotate(
         asignados=Count('tickets_asignados'),
-        pendientes=Count('tickets_asignados', filter=Q(tickets_asignados__estado__in=['ABIERTO', 'EN_PROCESO'])),
-        urgentes=Count('tickets_asignados', filter=Q(tickets_asignados__estado__in=['ABIERTO', 'EN_PROCESO'],
-                                                     tickets_asignados__prioridad__in=['ALTA', 'CRITICA'])),
-        atendidos=Count('tickets_asignados', filter=Q(tickets_asignados__estado__in=['RESUELTO', 'CERRADO'])),
+        pendientes=Count('tickets_asignados', filter=T.q_pendiente('tickets_asignados__')),
+        urgentes=Count('tickets_asignados', filter=T.q_pendiente('tickets_asignados__') & T.q_urgente('tickets_asignados__')),
+        atendidos=Count('tickets_asignados', filter=T.q_atendido('tickets_asignados__')),
     ).order_by('-pendientes', '-urgentes', 'nombre_completo')
 
     # Reporte 3 · annotate(): situación postventa de cada cliente (dos relaciones -> distinct=True)
     clientes = Cliente.objects.annotate(
         equipos_total=Count('equipos', distinct=True),
         garantia_vencida=Count('equipos', filter=Q(equipos__fin_garantia__lt=hoy), distinct=True),
-        tickets_pendientes=Count('equipos__tickets', filter=Q(equipos__tickets__estado__in=['ABIERTO', 'EN_PROCESO']),
-                                 distinct=True),
+        tickets_pendientes=Count('equipos__tickets', filter=T.q_pendiente('equipos__tickets__'), distinct=True),
     ).order_by('-tickets_pendientes', '-garantia_vencida', 'razon_social')
 
     # Reporte 4 · values().annotate(): tickets agrupados por prioridad
     etiquetas_prioridad = dict(TicketSoporte.PRIORIDADES)
     por_prioridad = list(
         TicketSoporte.objects.values('prioridad')
-        .annotate(total=Count('id'), pendientes=Count('id', filter=TICKET_PENDIENTE))
+        .annotate(total=Count('id'), pendientes=Count('id', filter=T.q_pendiente()))
         .order_by('-pendientes', '-total')
     )
     for fila in por_prioridad:
         fila['etiqueta'] = etiquetas_prioridad.get(fila['prioridad'], fila['prioridad'])
+
+    # Métodos encadenados del QuerySet: tickets urgentes que siguen sin resolver, del más reciente al más antiguo
+    urgentes_pendientes = TicketSoporte.objects.pendientes().urgentes().con_detalle().recientes()
 
     # Reporte 5 · values().annotate(): desempeño de proveedores a partir del modelo intermedio Suministro
     proveedores = (
@@ -554,4 +572,5 @@ def reporte_postventa(request):
         'clientes': clientes,
         'por_prioridad': por_prioridad,
         'proveedores': proveedores,
+        'urgentes_pendientes': urgentes_pendientes,
     })
