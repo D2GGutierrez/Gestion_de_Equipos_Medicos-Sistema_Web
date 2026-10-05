@@ -3,7 +3,7 @@ from datetime import date
 
 from django.contrib import messages
 from django.db import IntegrityError, transaction
-from django.db.models import F
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
@@ -393,4 +393,55 @@ def registrar_instalacion(request):
         'form': form,
         'productos': Producto.objects.order_by('nombre'),
         'ultimos_equipos': EquipoInstalado.objects.select_related('producto', 'cliente').order_by('-id')[:5],
+    })
+
+def reporte(request):
+    # Valor de cada suministro: precio_compra x stock del producto, calculado en la BD con F()
+    valor = ExpressionWrapper(
+        F('precio_compra') * F('producto__stock'),
+        output_field=DecimalField(max_digits=14, decimal_places=2),
+    )
+    principales = Suministro.objects.filter(es_proveedor_principal=True)
+
+    # Ejercicio 4: aggregate() devuelve un dict con el total global
+    totales = principales.aggregate(
+        valor_inventario=Sum(valor),
+        suministros=Count('id'),
+        unidades=Sum('producto__stock'),
+    )
+    detalle_valor = (principales.select_related('producto', 'proveedor')
+                     .annotate(subtotal=valor).order_by('-subtotal'))
+
+    # Ejercicio 5: annotate() agrega un valor calculado a cada objeto
+    productos = Producto.objects.annotate(
+        num_equipos=Count('equipos', distinct=True),
+        num_proveedores=Count('proveedores', distinct=True),
+    ).order_by('-num_equipos', '-num_proveedores', 'nombre')
+
+    clientes = Cliente.objects.annotate(
+        num_equipos=Count('equipos'),
+        en_mantenimiento=Count('equipos', filter=Q(equipos__estado='MANTENIMIENTO')),
+    ).order_by('-num_equipos', 'razon_social')
+
+    # Ejercicio 5: values().annotate() agrupa por estado
+    equipos_por_estado = list(EquipoInstalado.objects.values('estado').annotate(total=Count('id')).order_by('-total'))
+    tickets_por_estado = list(TicketSoporte.objects.values('estado').annotate(total=Count('id')).order_by('-total', 'estado'))
+
+    # Etiqueta legible y porcentaje de cada grupo (el porcentaje se formatea en el Template con floatformat)
+    for grupos, estados in ((equipos_por_estado, EquipoInstalado.ESTADOS), (tickets_por_estado, TicketSoporte.ESTADOS)):
+        etiquetas = dict(estados)
+        total = sum(g['total'] for g in grupos)
+        for g in grupos:
+            g['etiqueta'] = etiquetas.get(g['estado'], g['estado'])
+            g['porcentaje'] = g['total'] * 100 / total if total else 0
+
+    return render(request, 'inventario/reporte.html', {
+        'totales': totales,
+        'detalle_valor': detalle_valor,
+        'productos': productos,
+        'clientes': clientes,
+        'equipos_por_estado': equipos_por_estado,
+        'tickets_por_estado': tickets_por_estado,
+        'total_equipos': sum(g['total'] for g in equipos_por_estado),
+        'total_tickets': sum(g['total'] for g in tickets_por_estado),
     })
