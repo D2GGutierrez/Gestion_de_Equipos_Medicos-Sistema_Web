@@ -270,3 +270,34 @@ class ConsultasN1Tests(DatosBase):
             self.agregar_registros(extra)
             with self.subTest(tickets=TicketSoporte.objects.count()), self.assertNumQueries(1):
                 self.client.get(reverse('lista_tickets'))
+
+
+class ReportePostventaTests(DatosBase):
+
+    def test_reporte_postventa(self):
+        Suministro.objects.create(producto=self.monitor, proveedor=self.proveedor, precio_compra=Decimal('800.00'),
+                                  dias_entrega_promedio=10, es_proveedor_principal=True)
+        Suministro.objects.create(producto=self.ventilador, proveedor=self.proveedor, precio_compra=Decimal('4000.00'),
+                                  dias_entrega_promedio=21)
+
+        r = self.client.get(reverse('reporte_postventa'))
+        self.assertEqual(r.status_code, 200)
+        self.assertTemplateUsed(r, 'inventario/base.html')
+
+        # aggregate(): un equipo con garantía vigente (instalado hoy) y otro vencida (enero 2026)
+        garantias = r.context['garantias']
+        self.assertEqual((garantias['total'], garantias['vigentes'], garantias['vencidas']), (2, 1, 1))
+        self.assertEqual(garantias['pct_vigentes'], 50)
+        self.assertEqual((r.context['tickets']['total'], r.context['tickets']['pendientes']), (1, 1))
+
+        # annotate(): el técnico tiene el ticket abierto
+        tecnico = r.context['tecnicos'][0]
+        self.assertEqual((tecnico.asignados, tecnico.pendientes, tecnico.atendidos), (1, 1, 0))
+        cliente = r.context['clientes'][0]
+        self.assertEqual((cliente.equipos_total, cliente.garantia_vencida, cliente.tickets_pendientes), (2, 1, 1))
+
+        # values().annotate()
+        self.assertEqual(r.context['por_prioridad'][0]['prioridad'], 'MEDIA')
+        proveedor = r.context['proveedores'][0]
+        self.assertEqual((proveedor['productos'], proveedor['como_principal'], proveedor['dias_entrega']), (2, 1, 15.5))
+        self.assertContains(r, '15.5 días')  # floatformat:1 sobre el Avg

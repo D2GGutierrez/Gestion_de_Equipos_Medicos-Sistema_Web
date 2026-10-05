@@ -1,0 +1,193 @@
+{% extends 'inventario/base.html' %}
+
+{% block title %}Reporte de Soporte Postventa{% endblock %}
+
+{% block content %}
+<div class="mt-2 mb-4">
+    <h2 class="mb-0">Reporte de Soporte Postventa</h2>
+    <small class="text-muted">Garantías, tickets, técnicos y proveedores · Datos al {{ hoy|date:"d/m/Y" }}</small>
+</div>
+
+{# ================= Reporte 1 · aggregate() ================= #}
+<h4 class="mb-3">1. Resumen general <small class="text-muted fs-6">aggregate()</small></h4>
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="card shadow-sm h-100 border-success">
+            <div class="card-body">
+                <div class="text-muted small">Equipos con garantía vigente</div>
+                <div class="fs-3 fw-bold text-success">{{ garantias.vigentes }} <small class="fs-6 text-muted">de {{ garantias.total }}</small></div>
+                {# floatformat:1 sobre el porcentaje calculado a partir del aggregate #}
+                <div class="small">{{ garantias.pct_vigentes|floatformat:1 }}% del parque instalado</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card shadow-sm h-100 border-danger">
+            <div class="card-body">
+                <div class="text-muted small">Garantías vencidas</div>
+                <div class="fs-3 fw-bold text-danger">{{ garantias.vencidas }}</div>
+                <div class="small">Oportunidad de contrato de mantenimiento</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card shadow-sm h-100 border-warning">
+            <div class="card-body">
+                <div class="text-muted small">Vencen en los próximos {{ dias_aviso }} días</div>
+                <div class="fs-3 fw-bold text-warning">{{ garantias.por_vencer }}</div>
+                <div class="small">
+                    {% if garantias.proximo_vencimiento %}Próximo vencimiento: {{ garantias.proximo_vencimiento|date:"d/m/Y" }}{% else %}Sin vencimientos próximos{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card shadow-sm h-100 border-primary">
+            <div class="card-body">
+                <div class="text-muted small">Tickets pendientes</div>
+                <div class="fs-3 fw-bold text-primary">{{ tickets.pendientes }} <small class="fs-6 text-muted">de {{ tickets.total }}</small></div>
+                <div class="small">
+                    {{ tickets.pct_pendientes|floatformat:0 }}% sin cerrar ·
+                    <span class="text-danger fw-semibold">{{ tickets.criticos_pendientes }} urgente{{ tickets.criticos_pendientes|pluralize }}</span> ·
+                    {{ tickets.sin_tecnico }} sin técnico
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-5">
+    <div class="card-header fw-bold">Garantías por vencer (próximos {{ dias_aviso }} días)</div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>Serie</th><th>Producto</th><th>Cliente</th><th>Fin de garantía</th><th class="text-end">Quedan</th></tr>
+            </thead>
+            <tbody>
+                {% for e in equipos_por_vencer %}
+                <tr>
+                    <td><span class="badge bg-secondary">{{ e.numero_serie }}</span></td>
+                    <td>{{ e.producto.nombre }}</td>
+                    <td>{{ e.cliente.razon_social }}</td>
+                    <td>{{ e.fin_garantia|date:"d/m/Y" }}</td>
+                    {# timeuntil calcula el tiempo restante hasta la fecha #}
+                    <td class="text-end"><span class="badge bg-warning text-dark">{{ e.fin_garantia|timeuntil:hoy }}</span></td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-3">Ninguna garantía vence en este periodo.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# ================= Reportes 2 y 3 · annotate() ================= #}
+<div class="row g-4 mb-5">
+    <div class="col-lg-6">
+        <h4 class="mb-3">2. Carga por técnico <small class="text-muted fs-6">annotate()</small></h4>
+        <div class="card shadow-sm">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr><th>Técnico</th><th class="text-end">Asignados</th><th class="text-end">Pendientes</th><th class="text-end">Urgentes</th><th class="text-end">Atendidos</th></tr>
+                </thead>
+                <tbody>
+                    {% for t in tecnicos %}
+                    <tr>
+                        <td class="fw-semibold">{{ t.nombre_completo }}</td>
+                        <td class="text-end">{{ t.asignados }}</td>
+                        <td class="text-end"><span class="badge bg-primary">{{ t.pendientes }}</span></td>
+                        <td class="text-end"><span class="badge {% if t.urgentes %}bg-danger{% else %}bg-light text-muted border{% endif %}">{{ t.urgentes }}</span></td>
+                        <td class="text-end">{{ t.atendidos }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted py-3">No hay técnicos registrados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if tickets.sin_tecnico %}
+        <div class="alert alert-warning mt-3 mb-0 py-2 small">
+            {{ tickets.sin_tecnico }} ticket{{ tickets.sin_tecnico|pluralize }} pendiente{{ tickets.sin_tecnico|pluralize }} sin técnico asignado.
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-lg-6">
+        <h4 class="mb-3">3. Situación por cliente <small class="text-muted fs-6">annotate()</small></h4>
+        <div class="card shadow-sm">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr><th>Cliente</th><th class="text-end">Equipos</th><th class="text-end">Garantía vencida</th><th class="text-end">Tickets pendientes</th></tr>
+                </thead>
+                <tbody>
+                    {% for c in clientes %}
+                    <tr>
+                        <td class="fw-semibold">{{ c.razon_social }}</td>
+                        <td class="text-end">{{ c.equipos_total }}</td>
+                        <td class="text-end"><span class="badge {% if c.garantia_vencida %}bg-danger{% else %}bg-light text-muted border{% endif %}">{{ c.garantia_vencida }}</span></td>
+                        <td class="text-end"><span class="badge bg-primary">{{ c.tickets_pendientes }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{# ================= Reportes 4 y 5 · values().annotate() ================= #}
+<div class="row g-4">
+    <div class="col-lg-5">
+        <h4 class="mb-3">4. Tickets por prioridad <small class="text-muted fs-6">values().annotate()</small></h4>
+        <div class="card shadow-sm">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr><th>Prioridad</th><th class="text-end">Total</th><th class="text-end">Pendientes</th></tr>
+                </thead>
+                <tbody>
+                    {% for p in por_prioridad %}
+                    <tr>
+                        <td>
+                            <span class="badge {% if p.prioridad == 'CRITICA' %}bg-danger{% elif p.prioridad == 'ALTA' %}bg-warning text-dark{% elif p.prioridad == 'MEDIA' %}bg-info text-dark{% else %}bg-secondary{% endif %}">{{ p.etiqueta }}</span>
+                        </td>
+                        <td class="text-end">{{ p.total }}</td>
+                        <td class="text-end fw-bold">{{ p.pendientes }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-center text-muted py-3">No hay tickets registrados.</td></tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr><th>Total</th><th class="text-end">{{ tickets.total }}</th><th class="text-end">{{ tickets.pendientes }}</th></tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <h4 class="mb-3">5. Desempeño de proveedores <small class="text-muted fs-6">values().annotate()</small></h4>
+        <div class="card shadow-sm">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr><th>Proveedor</th><th class="text-end">Productos</th><th class="text-end">Como principal</th><th class="text-end">Entrega promedio</th><th class="text-end">Más lenta</th></tr>
+                </thead>
+                <tbody>
+                    {% for p in proveedores %}
+                    <tr>
+                        <td class="fw-semibold">{{ p.proveedor__nombre_empresa }}</td>
+                        <td class="text-end">{{ p.productos }}</td>
+                        <td class="text-end">{{ p.como_principal }}</td>
+                        {# floatformat:1 sobre el Avg de días de entrega #}
+                        <td class="text-end"><span class="badge {% if p.dias_entrega <= 15 %}bg-success{% elif p.dias_entrega <= 30 %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ p.dias_entrega|floatformat:1 }} días</span></td>
+                        <td class="text-end">{{ p.entrega_mas_lenta }} días</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted py-3">No hay suministros registrados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <small class="text-muted">Ordenado del proveedor más rápido al más lento.</small>
+    </div>
+</div>
+{% endblock %}

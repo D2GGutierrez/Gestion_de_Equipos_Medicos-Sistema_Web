@@ -41,4 +41,5 @@ urlpatterns = [
 
     # Reporte (aggregate / annotate)
     path('reporte/', views.reporte, name='reporte'),
+    path('reportes/postventa/', views.reporte_postventa, name='reporte_postventa'),
 ]

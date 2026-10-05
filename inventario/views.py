@@ -1,9 +1,9 @@
 import calendar
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib import messages
 from django.db import IntegrityError, transaction
-from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum
+from django.db.models import Avg, Count, DecimalField, ExpressionWrapper, F, Max, Min, Q, Sum
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
@@ -472,4 +472,86 @@ def reporte(request):
         'agotados': agotados,
         'instalados_mes': instalados_mes,
         'stock_minimo': ProductoQuerySet.STOCK_MINIMO,
+    })
+
+
+# Reportes de la investigación: soporte postventa (garantías, tickets, técnicos y proveedores)
+TICKET_PENDIENTE = Q(estado__in=['ABIERTO', 'EN_PROCESO'])
+DIAS_AVISO_GARANTIA = 90
+
+
+def reporte_postventa(request):
+    hoy = timezone.localdate()
+    limite_aviso = hoy + timedelta(days=DIAS_AVISO_GARANTIA)
+
+    # Reporte 1 · aggregate(): resumen global de garantías y tickets (cada uno devuelve un dict)
+    garantias = EquipoInstalado.objects.aggregate(
+        total=Count('id'),
+        vigentes=Count('id', filter=Q(fin_garantia__gte=hoy)),
+        vencidas=Count('id', filter=Q(fin_garantia__lt=hoy)),
+        por_vencer=Count('id', filter=Q(fin_garantia__gte=hoy, fin_garantia__lte=limite_aviso)),
+        proximo_vencimiento=Min('fin_garantia', filter=Q(fin_garantia__gte=hoy)),
+    )
+    garantias['pct_vigentes'] = garantias['vigentes'] * 100 / garantias['total'] if garantias['total'] else 0
+
+    tickets = TicketSoporte.objects.aggregate(
+        total=Count('id'),
+        pendientes=Count('id', filter=TICKET_PENDIENTE),
+        criticos_pendientes=Count('id', filter=TICKET_PENDIENTE & Q(prioridad__in=['ALTA', 'CRITICA'])),
+        sin_tecnico=Count('id', filter=TICKET_PENDIENTE & Q(tecnico__isnull=True)),
+    )
+    tickets['pct_pendientes'] = tickets['pendientes'] * 100 / tickets['total'] if tickets['total'] else 0
+
+    equipos_por_vencer = (EquipoInstalado.objects.select_related('producto', 'cliente')
+                          .filter(fin_garantia__gte=hoy, fin_garantia__lte=limite_aviso).order_by('fin_garantia'))
+
+    # Reporte 2 · annotate(): carga de trabajo de cada técnico
+    tecnicos = Usuario.objects.filter(rol='TECNICO').annotate(
+        asignados=Count('tickets_asignados'),
+        pendientes=Count('tickets_asignados', filter=Q(tickets_asignados__estado__in=['ABIERTO', 'EN_PROCESO'])),
+        urgentes=Count('tickets_asignados', filter=Q(tickets_asignados__estado__in=['ABIERTO', 'EN_PROCESO'],
+                                                     tickets_asignados__prioridad__in=['ALTA', 'CRITICA'])),
+        atendidos=Count('tickets_asignados', filter=Q(tickets_asignados__estado__in=['RESUELTO', 'CERRADO'])),
+    ).order_by('-pendientes', '-urgentes', 'nombre_completo')
+
+    # Reporte 3 · annotate(): situación postventa de cada cliente (dos relaciones -> distinct=True)
+    clientes = Cliente.objects.annotate(
+        equipos_total=Count('equipos', distinct=True),
+        garantia_vencida=Count('equipos', filter=Q(equipos__fin_garantia__lt=hoy), distinct=True),
+        tickets_pendientes=Count('equipos__tickets', filter=Q(equipos__tickets__estado__in=['ABIERTO', 'EN_PROCESO']),
+                                 distinct=True),
+    ).order_by('-tickets_pendientes', '-garantia_vencida', 'razon_social')
+
+    # Reporte 4 · values().annotate(): tickets agrupados por prioridad
+    etiquetas_prioridad = dict(TicketSoporte.PRIORIDADES)
+    por_prioridad = list(
+        TicketSoporte.objects.values('prioridad')
+        .annotate(total=Count('id'), pendientes=Count('id', filter=TICKET_PENDIENTE))
+        .order_by('-pendientes', '-total')
+    )
+    for fila in por_prioridad:
+        fila['etiqueta'] = etiquetas_prioridad.get(fila['prioridad'], fila['prioridad'])
+
+    # Reporte 5 · values().annotate(): desempeño de proveedores a partir del modelo intermedio Suministro
+    proveedores = (
+        Suministro.objects.values('proveedor__nombre_empresa')
+        .annotate(
+            productos=Count('producto'),
+            como_principal=Count('id', filter=Q(es_proveedor_principal=True)),
+            dias_entrega=Avg('dias_entrega_promedio'),
+            entrega_mas_lenta=Max('dias_entrega_promedio'),
+        )
+        .order_by('dias_entrega', '-productos')
+    )
+
+    return render(request, 'inventario/reporte_postventa.html', {
+        'hoy': hoy,
+        'dias_aviso': DIAS_AVISO_GARANTIA,
+        'garantias': garantias,
+        'tickets': tickets,
+        'equipos_por_vencer': equipos_por_vencer,
+        'tecnicos': tecnicos,
+        'clientes': clientes,
+        'por_prioridad': por_prioridad,
+        'proveedores': proveedores,
     })
