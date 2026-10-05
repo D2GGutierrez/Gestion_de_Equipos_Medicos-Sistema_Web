@@ -1,9 +1,14 @@
+from datetime import date
 from decimal import Decimal
 
+from django.contrib.auth.hashers import make_password
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from inventario.models import Categoria, Cliente, Producto, Proveedor, Suministro
+from inventario.models import (
+    Categoria, Cliente, EquipoInstalado, Producto, Proveedor, Suministro, TicketSoporte, Usuario,
+)
+from inventario.views import sumar_meses
 
 
 # Relación 1:N -> una Categoría agrupa muchos Productos
@@ -55,9 +60,44 @@ CLIENTES = [
     ('20300054321', 'Centro Médico Santa Rosa E.I.R.L.', 'administracion@cmsantarosa.pe', '044255667', 'Jr. Pizarro 330, Trujillo'),
 ]
 
+# Usuarios del sistema (email, nombre_completo, rol)
+USUARIOS = [
+    ('admin@inventario.pe', 'Patricia Rojas Vega', 'ADMIN'),
+    ('jtorres@inventario.pe', 'Jorge Torres Lazo', 'TECNICO'),
+    ('mhuaman@inventario.pe', 'María Huamán Ccori', 'TECNICO'),
+]
+
+# Equipos instalados históricos (numero_serie, sku, ruc cliente, fecha_instalacion, estado).
+# Son instalaciones anteriores a la carga del stock actual, por eso no lo descuentan.
+EQUIPOS = [
+    ('MON-0101', 'MON-PHI-MX450', '20100012345', date(2024, 3, 12), 'OPERATIVO'),
+    ('MON-0102', 'MON-PHI-MX450', '20100012345', date(2024, 3, 12), 'OPERATIVO'),
+    ('MON-0103', 'MON-PHI-MX450', '20200067890', date(2025, 6, 20), 'MANTENIMIENTO'),
+    ('MON-0104', 'MON-PHI-MX450', '20300054321', date(2023, 1, 18), 'INACTIVO'),
+    ('VEN-0201', 'VEN-DRA-V500', '20200067890', date(2025, 2, 5), 'OPERATIVO'),
+    ('VEN-0202', 'VEN-DRA-V500', '20200067890', date(2025, 2, 5), 'MANTENIMIENTO'),
+    ('DES-0301', 'DES-ZOL-RS1', '20300054321', date(2024, 11, 3), 'OPERATIVO'),
+    ('DES-0302', 'DES-ZOL-RS1', '20100012345', date(2023, 8, 27), 'MANTENIMIENTO'),
+    ('OXI-0401', 'OXI-NON-7500', '20300054321', date(2022, 5, 9), 'INACTIVO'),
+    ('RX-0501', 'RX-SIE-MOB3', '20200067890', date(2025, 9, 15), 'OPERATIVO'),
+]
+
+# Tickets de soporte (codigo, numero_serie del equipo, email del técnico, prioridad, estado, descripcion)
+TICKETS = [
+    ('TCK-0001', 'MON-0103', 'jtorres@inventario.pe', 'ALTA', 'EN_PROCESO', 'La alarma de SpO2 se activa sin motivo.'),
+    ('TCK-0002', 'VEN-0202', 'mhuaman@inventario.pe', 'CRITICA', 'ABIERTO', 'El ventilador detiene el ciclo y marca error de presión.'),
+    ('TCK-0003', 'DES-0302', 'jtorres@inventario.pe', 'MEDIA', 'ABIERTO', 'La batería no mantiene la carga más de 2 horas.'),
+    ('TCK-0004', 'MON-0101', 'mhuaman@inventario.pe', 'BAJA', 'RESUELTO', 'Solicitud de recalibración de la pantalla táctil.'),
+    ('TCK-0005', 'VEN-0201', None, 'ALTA', 'ABIERTO', 'Ruido anormal en la turbina durante la ventilación.'),
+    ('TCK-0006', 'RX-0501', 'jtorres@inventario.pe', 'MEDIA', 'EN_PROCESO', 'Imágenes con artefactos en la parte inferior.'),
+    ('TCK-0007', 'MON-0104', 'mhuaman@inventario.pe', 'BAJA', 'CERRADO', 'Equipo dado de baja tras evaluación técnica.'),
+    ('TCK-0008', 'ECO-0001', 'jtorres@inventario.pe', 'MEDIA', 'ABIERTO', 'El transductor convexo no es reconocido.'),
+]
+
 
 class Command(BaseCommand):
-    help = 'Registra datos de prueba: Categorías (1:N), Productos, Proveedores, Suministros (N:M through) y Clientes.'
+    help = ('Registra datos de prueba: Categorías (1:N), Productos, Proveedores, Suministros (N:M through), '
+            'Clientes, Usuarios, Equipos Instalados y Tickets de Soporte.')
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -70,13 +110,14 @@ class Command(BaseCommand):
 
         productos = {}
         for sku, nombre, marca, modelo, precio, garantia, stock, categoria in PRODUCTOS:
+            datos = {
+                'nombre': nombre, 'marca': marca, 'modelo': modelo,
+                'precio_base': Decimal(precio), 'meses_garantia': garantia,
+                'categoria': categorias[categoria],
+            }
+            # El stock solo se fija al crear: al volver a ejecutar no se pisan los movimientos ya registrados
             productos[sku], _ = Producto.objects.update_or_create(
-                codigo_sku=sku,
-                defaults={
-                    'nombre': nombre, 'marca': marca, 'modelo': modelo,
-                    'precio_base': Decimal(precio), 'meses_garantia': garantia, 'stock': stock,
-                    'categoria': categorias[categoria],
-                },
+                codigo_sku=sku, defaults=datos, create_defaults={**datos, 'stock': stock},
             )
 
         proveedores = {}
@@ -95,15 +136,46 @@ class Command(BaseCommand):
                 },
             )
 
+        clientes = {}
         for ruc, razon_social, email, telefono, direccion in CLIENTES:
-            Cliente.objects.update_or_create(
+            clientes[ruc], _ = Cliente.objects.update_or_create(
                 numero_identificacion=ruc,
                 defaults={'razon_social': razon_social, 'email_contacto': email,
                           'telefono': telefono, 'direccion_fiscal': direccion},
             )
 
+        usuarios = {}
+        for email, nombre, rol in USUARIOS:
+            usuarios[email], _ = Usuario.objects.update_or_create(
+                email=email, defaults={'nombre_completo': nombre, 'rol': rol},
+                create_defaults={'nombre_completo': nombre, 'rol': rol, 'password_hash': make_password('Cambiar123')},
+            )
+
+        for serie, sku, ruc, fecha, estado in EQUIPOS:
+            EquipoInstalado.objects.update_or_create(
+                numero_serie=serie,
+                defaults={
+                    'producto': productos[sku], 'cliente': clientes[ruc], 'fecha_instalacion': fecha,
+                    'fin_garantia': sumar_meses(fecha, productos[sku].meses_garantia), 'estado': estado,
+                },
+            )
+
+        for codigo, serie, email_tecnico, prioridad, estado, descripcion in TICKETS:
+            equipo = EquipoInstalado.objects.filter(numero_serie=serie).first()
+            if equipo is None:
+                # ECO-0001 proviene de una instalación registrada desde la aplicación
+                continue
+            TicketSoporte.objects.update_or_create(
+                codigo_ticket=codigo,
+                defaults={
+                    'equipo': equipo, 'tecnico': usuarios.get(email_tecnico),
+                    'prioridad': prioridad, 'estado': estado, 'descripcion_falla': descripcion,
+                },
+            )
+
         self.stdout.write(self.style.SUCCESS(
             f'Datos registrados: {Categoria.objects.count()} categorías, {Producto.objects.count()} productos, '
             f'{Proveedor.objects.count()} proveedores, {Suministro.objects.count()} suministros, '
-            f'{Cliente.objects.count()} clientes.'
+            f'{Cliente.objects.count()} clientes, {Usuario.objects.count()} usuarios, '
+            f'{EquipoInstalado.objects.count()} equipos, {TicketSoporte.objects.count()} tickets.'
         ))
