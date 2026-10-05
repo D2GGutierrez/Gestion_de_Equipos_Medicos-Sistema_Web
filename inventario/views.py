@@ -7,21 +7,40 @@ from django.db.models import Count, DecimalField, ExpressionWrapper, F, Q, Sum
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.utils import timezone
-from .models import Producto, Cliente, Usuario, EquipoInstalado, TicketSoporte, Suministro, Proveedor, Categoria, FichaTecnica
+from .models import Producto, ProductoQuerySet, Cliente, Usuario, EquipoInstalado, TicketSoporte, Suministro, Proveedor, Categoria, FichaTecnica
 from .forms import ProductoForm, ClienteForm, UsuarioForm, EquipoInstaladoForm, TicketSoporteForm, SuministroForm, RegistrarInstalacionForm
 
 
 # Vista para Listar Productos (Optimizado con select_related para 1:1 y 1:N)
+# Filtros por regla de negocio con los métodos encadenables de ProductoQuerySet
 def lista_productos(request):
-    productos = Producto.objects.select_related('categoria', 'ficha_tecnica').all().order_by('nombre')
-    return render(request, 'inventario/lista_productos.html', {'productos': productos})
+    productos = Producto.objects.con_detalle()
+
+    stock = request.GET.get('stock')
+    if stock == 'disponibles':
+        productos = productos.disponibles()
+    elif stock == 'bajo':
+        productos = productos.stock_bajo()
+    elif stock == 'agotados':
+        productos = productos.agotados()
+
+    instalados_mes = request.GET.get('mes') == 'actual'
+    if instalados_mes:
+        productos = productos.instalados_en_mes()
+
+    return render(request, 'inventario/lista_productos.html', {
+        'productos': productos.por_nombre(),
+        'stock_seleccionado': stock,
+        'instalados_mes': instalados_mes,
+        'stock_minimo': ProductoQuerySet.STOCK_MINIMO,
+    })
 
 
 # Vista para Consultar Productos con Proveedores (Optimizado con prefetch_related para N:M con modelo intermedio)
 def productos_proveedores(request):
     productos = Producto.objects.prefetch_related(
         'suministro_set__proveedor'
-    ).order_by('nombre')
+    ).por_nombre()
 
     return render(request, 'inventario/productos_proveedores.html', {'productos': productos})
 
@@ -373,7 +392,7 @@ def registrar_instalacion(request):
                         )
 
                     # 2) UPDATE del stock con F().
-                    filas = Producto.objects.filter(pk=producto.pk, stock__gte=cantidad).update(stock=F('stock') - cantidad)
+                    filas = Producto.objects.filter(pk=producto.pk).con_stock_para(cantidad).update(stock=F('stock') - cantidad)
                     if filas == 0:
                         
                         raise StockInsuficiente
@@ -391,7 +410,7 @@ def registrar_instalacion(request):
 
     return render(request, 'inventario/registrar_instalacion.html', {
         'form': form,
-        'productos': Producto.objects.order_by('nombre'),
+        'productos': Producto.objects.por_nombre(),
         'ultimos_equipos': EquipoInstalado.objects.select_related('producto', 'cliente').order_by('-id')[:5],
     })
 
@@ -413,10 +432,12 @@ def reporte(request):
                      .annotate(subtotal=valor).order_by('-subtotal'))
 
     # Ejercicio 5: annotate() agrega un valor calculado a cada objeto
-    productos = Producto.objects.annotate(
-        num_equipos=Count('equipos', distinct=True),
-        num_proveedores=Count('proveedores', distinct=True),
-    ).order_by('-num_equipos', '-num_proveedores', 'nombre')
+    productos = Producto.objects.con_conteos().order_by('-num_equipos', '-num_proveedores', 'nombre')
+
+    # Reglas de negocio encadenadas: productos que requieren reposición
+    stock_bajo = Producto.objects.stock_bajo().por_nombre()
+    agotados = Producto.objects.agotados().por_nombre()
+    instalados_mes = Producto.objects.instalados_en_mes().con_conteos().por_nombre()
 
     clientes = Cliente.objects.annotate(
         num_equipos=Count('equipos'),
@@ -444,4 +465,8 @@ def reporte(request):
         'tickets_por_estado': tickets_por_estado,
         'total_equipos': sum(g['total'] for g in equipos_por_estado),
         'total_tickets': sum(g['total'] for g in tickets_por_estado),
+        'stock_bajo': stock_bajo,
+        'agotados': agotados,
+        'instalados_mes': instalados_mes,
+        'stock_minimo': ProductoQuerySet.STOCK_MINIMO,
     })

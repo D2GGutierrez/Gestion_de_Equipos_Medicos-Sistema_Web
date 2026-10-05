@@ -168,4 +168,46 @@
         </div>
     </div>
 </div>
+
+{# ================= QuerySet personalizado: reglas de negocio ================= #}
+<h4 class="mt-5 mb-3">Alertas de inventario <small class="text-muted fs-6">ProductoQuerySet</small></h4>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100 border-warning">
+            <div class="card-header fw-bold">Stock bajo (≤ {{ stock_minimo }}) <code class="small">.stock_bajo()</code></div>
+            <ul class="list-group list-group-flush">
+                {% for p in stock_bajo %}
+                <li class="list-group-item d-flex justify-content-between">{{ p.nombre }} <span class="badge bg-warning text-dark">{{ p.stock }}</span></li>
+                {% empty %}
+                <li class="list-group-item text-muted">Ningún producto con stock bajo.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100 border-danger">
+            <div class="card-header fw-bold">Agotados <code class="small">.agotados()</code></div>
+            <ul class="list-group list-group-flush">
+                {% for p in agotados %}
+                <li class="list-group-item d-flex justify-content-between">{{ p.nombre }} <span class="badge bg-danger">0</span></li>
+                {% empty %}
+                <li class="list-group-item text-muted">Ningún producto agotado.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card shadow-sm h-100 border-primary">
+            <div class="card-header fw-bold">Instalados este mes <code class="small">.instalados_en_mes()</code></div>
+            <ul class="list-group list-group-flush">
+                {% for p in instalados_mes %}
+                <li class="list-group-item d-flex justify-content-between">{{ p.nombre }} <span class="badge bg-primary">{{ p.num_equipos }} equipo{{ p.num_equipos|pluralize }}</span></li>
+                {% empty %}
+                <li class="list-group-item text-muted">No hubo instalaciones este mes.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
 {% endblock %}

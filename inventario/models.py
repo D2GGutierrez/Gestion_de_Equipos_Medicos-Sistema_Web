@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 
 class Cliente(models.Model):
@@ -35,6 +36,50 @@ class Proveedor(models.Model):
         return self.nombre_empresa
 
 
+# Reglas de negocio de Producto. Cada método devuelve un QuerySet, por eso se pueden encadenar:
+#   Producto.objects.disponibles().stock_bajo().por_nombre()
+class ProductoQuerySet(models.QuerySet):
+    STOCK_MINIMO = 3  # Por debajo o igual a este valor se considera stock bajo (reposición)
+
+    def disponibles(self):
+        """Productos que se pueden instalar: tienen al menos una unidad en almacén."""
+        return self.filter(stock__gt=0)
+
+    def agotados(self):
+        """Productos sin unidades en almacén."""
+        return self.filter(stock=0)
+
+    def stock_bajo(self, limite=STOCK_MINIMO):
+        """Productos con pocas unidades: hay que pedir reposición al proveedor principal."""
+        return self.filter(stock__gt=0, stock__lte=limite)
+
+    def con_stock_para(self, cantidad):
+        """Productos cuyo stock alcanza para atender la cantidad solicitada."""
+        return self.filter(stock__gte=cantidad)
+
+    def instalados_en_mes(self, fecha=None):
+        """Productos con al menos un equipo instalado en el mes de 'fecha' (por defecto, el mes actual)."""
+        fecha = fecha or timezone.localdate()
+        return self.filter(
+            equipos__fecha_instalacion__year=fecha.year,
+            equipos__fecha_instalacion__month=fecha.month,
+        ).distinct()
+
+    def con_detalle(self):
+        """Trae en la misma consulta la Categoría (1:N) y la Ficha Técnica (1:1) para los listados."""
+        return self.select_related('categoria', 'ficha_tecnica')
+
+    def con_conteos(self):
+        """Anota cuántos equipos instalados y cuántos proveedores tiene cada producto."""
+        return self.annotate(
+            num_equipos=models.Count('equipos', distinct=True),
+            num_proveedores=models.Count('proveedores', distinct=True),
+        )
+
+    def por_nombre(self):
+        return self.order_by('nombre')
+
+
 class Producto(models.Model):
     codigo_sku = models.CharField(max_length=50, unique=True)
     nombre = models.CharField(max_length=100)
@@ -58,6 +103,8 @@ class Producto(models.Model):
         related_name='productos',
         blank=True
     )
+
+    objects = ProductoQuerySet.as_manager()
 
     def __str__(self):
         return f"{self.nombre} - {self.modelo}"

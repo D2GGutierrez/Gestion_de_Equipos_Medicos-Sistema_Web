@@ -13,6 +13,22 @@
         <a href="{% url 'crear_producto' %}" class="btn btn-primary">+ Crear Nuevo Producto</a>
     </div>
 
+    {# Filtros por reglas de negocio (métodos de ProductoQuerySet). Se pueden combinar stock + mes. #}
+    <form method="get" class="d-flex flex-wrap gap-2 align-items-center mb-3">
+        <select name="stock" class="form-select form-select-sm w-auto">
+            <option value="" {% if not stock_seleccionado %}selected{% endif %}>Todo el stock</option>
+            <option value="disponibles" {% if stock_seleccionado == 'disponibles' %}selected{% endif %}>Disponibles</option>
+            <option value="bajo" {% if stock_seleccionado == 'bajo' %}selected{% endif %}>Stock bajo (≤ {{ stock_minimo }})</option>
+            <option value="agotados" {% if stock_seleccionado == 'agotados' %}selected{% endif %}>Agotados</option>
+        </select>
+        <div class="form-check ms-2">
+            <input class="form-check-input" type="checkbox" name="mes" value="actual" id="mes" {% if instalados_mes %}checked{% endif %}>
+            <label class="form-check-label" for="mes">Con instalaciones este mes</label>
+        </div>
+        <button type="submit" class="btn btn-sm btn-outline-primary">Filtrar</button>
+        <a href="{% url 'lista_productos' %}" class="btn btn-sm btn-outline-secondary">Limpiar</a>
+    </form>
+
     <div class="table-responsive">
         <table class="table table-striped table-hover border align-middle">
             <thead class="table-dark">
@@ -37,7 +53,7 @@
                     {# |floatformat:2 fija los dos decimales del DecimalField. #}
                     <td>${{ producto.precio_base|floatformat:2 }}</td>
                     <td class="text-center">
-                        <span class="badge {% if producto.stock == 0 %}bg-danger{% elif producto.stock <= 3 %}bg-warning text-dark{% else %}bg-success{% endif %}">{{ producto.stock }}</span>
+                        <span class="badge {% if producto.stock == 0 %}bg-danger{% elif producto.stock <= stock_minimo %}bg-warning text-dark{% else %}bg-success{% endif %}">{{ producto.stock }}</span>
                     </td>
 
                     {# Acceso directo 1:N, ya resuelto con select_related en la vista. #}
