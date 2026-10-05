@@ -38,7 +38,10 @@ def lista_productos(request):
 
 # Vista para Consultar Productos con Proveedores (Optimizado con prefetch_related para N:M con modelo intermedio)
 def productos_proveedores(request):
-    productos = Producto.objects.prefetch_related(
+    # select_related: la Categoría (FK, un objeto por producto) viene en el mismo SELECT con un JOIN.
+    # prefetch_related: los Suministros (lado "muchos") y sus Proveedores llegan en 1 consulta extra cada uno.
+    # Total: 3 consultas sin importar cuántos productos haya (antes: 1 + 1 por producto para la categoría).
+    productos = Producto.objects.select_related('categoria').prefetch_related(
         'suministro_set__proveedor'
     ).por_nombre()
 

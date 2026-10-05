@@ -236,3 +236,37 @@ class CrudSemana3Tests(DatosBase):
         r = self.client.post(reverse('eliminar_ticket', args=[self.ticket.pk]))
         self.assertRedirects(r, reverse('lista_tickets'))
         self.assertFalse(TicketSoporte.objects.filter(pk=self.ticket.pk).exists())
+
+
+class ConsultasN1Tests(DatosBase):
+    """El número de consultas de los listados no debe crecer con la cantidad de registros (sin N+1)."""
+
+    def agregar_registros(self, n):
+        inicio = Producto.objects.count()
+        for i in range(inicio, inicio + n):
+            p = Producto.objects.create(
+                codigo_sku=f'EXTRA-{i}', nombre=f'Extra {i}', marca='X', modelo='Y',
+                precio_base=Decimal('1.00'), meses_garantia=12, categoria=self.categoria,
+            )
+            Suministro.objects.create(producto=p, proveedor=self.proveedor, precio_compra=Decimal('1.00'),
+                                      dias_entrega_promedio=1)
+            equipo = EquipoInstalado.objects.create(
+                numero_serie=f'EXTRA-{i}', producto=p, cliente=self.cliente,
+                fecha_instalacion=date(2024, 1, 1), fin_garantia=date(2025, 1, 1),
+            )
+            TicketSoporte.objects.create(codigo_ticket=f'EXTRA-{i}', descripcion_falla='-', equipo=equipo,
+                                         tecnico=self.tecnico)
+
+    def test_productos_proveedores_3_consultas(self):
+        # producto + categoria (JOIN) | suministros | proveedores
+        for extra in (1, 10):
+            self.agregar_registros(extra)
+            with self.subTest(productos=Producto.objects.count()), self.assertNumQueries(3):
+                self.client.get(reverse('productos_proveedores'))
+
+    def test_lista_tickets_1_consulta(self):
+        # ticket + equipo + cliente + tecnico en un solo SELECT con JOINs
+        for extra in (1, 10):
+            self.agregar_registros(extra)
+            with self.subTest(tickets=TicketSoporte.objects.count()), self.assertNumQueries(1):
+                self.client.get(reverse('lista_tickets'))
