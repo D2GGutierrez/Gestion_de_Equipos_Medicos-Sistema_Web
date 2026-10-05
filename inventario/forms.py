@@ -43,6 +43,13 @@ class TicketSoporteForm(forms.ModelForm):
         model = TicketSoporte
         fields = ['codigo_ticket', 'descripcion_falla', 'prioridad', 'estado', 'equipo', 'tecnico']
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Cada opción del desplegable usa EquipoInstalado.__str__, que muestra el cliente.
+        # Sin select_related habría 1 consulta extra por equipo (N+1); con el JOIN, 1 sola consulta.
+        self.fields['equipo'].queryset = (EquipoInstalado.objects.select_related('cliente')
+                                          .order_by('cliente__razon_social', 'numero_serie'))
+
 
 # Formulario del modelo intermedio de la relación N:M (Producto <-> Proveedor).
 # 'producto' no se incluye: se fija desde la vista según el producto sobre el que se opera.

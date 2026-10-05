@@ -371,3 +371,22 @@ class TicketSoporteQuerySetTests(DatosBase):
                           r.context['tickets']['sin_tecnico']), (2, 1, 1))
         tecnico = r.context['tecnicos'][0]
         self.assertEqual((tecnico.asignados, tecnico.pendientes, tecnico.urgentes, tecnico.atendidos), (2, 1, 0, 1))
+
+
+class EditarTicketConsultasTests(DatosBase):
+    """El desplegable de equipos del formulario de ticket no debe hacer 1 consulta por equipo (N+1)."""
+
+    def test_editar_ticket_consultas_constantes(self):
+        url = reverse('editar_ticket', args=[self.ticket.pk])
+        for extra in (0, 20):
+            for i in range(extra):
+                cliente = Cliente.objects.create(
+                    razon_social=f'Cliente {i}', numero_identificacion=f'X{i}', email_contacto=f'c{i}@x.pe',
+                    telefono='0', direccion_fiscal='-',
+                )
+                EquipoInstalado.objects.create(numero_serie=f'EXTRA-{i}', producto=self.monitor, cliente=cliente,
+                                               fecha_instalacion=date(2024, 1, 1), fin_garantia=date(2026, 1, 1))
+            # ticket | equipos + cliente (JOIN) | técnicos
+            with self.subTest(equipos=EquipoInstalado.objects.count()), self.assertNumQueries(3):
+                r = self.client.get(url)
+            self.assertContains(r, 'Serie: MON-0001 - Clínica San Gabriel')
