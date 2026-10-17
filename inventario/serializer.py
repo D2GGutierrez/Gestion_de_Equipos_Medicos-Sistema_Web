@@ -41,6 +41,11 @@ class ProductoSerializer(serializers.ModelSerializer):
             'categoria', 'categoria_id', 'ficha_tecnica'
         ]
 
+    def validate_precio_base(self, value):
+        if value < 0:
+            raise serializers.ValidationError("El precio base no puede ser negativo.")
+        return value
+
 
 class ClienteSerializer(serializers.ModelSerializer):
     class Meta:
