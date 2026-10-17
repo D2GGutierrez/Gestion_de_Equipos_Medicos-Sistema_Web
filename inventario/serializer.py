@@ -52,6 +52,17 @@ class ClienteSerializer(serializers.ModelSerializer):
         model = Cliente
         fields = ['id', 'razon_social', 'numero_identificacion', 'email_contacto', 'telefono', 'direccion_fiscal', 'activo']
 
+    # Ejercicio 10: validación propia -> validate_<campo>
+    def validate_numero_identificacion(self, value):
+        value = value.strip()
+        if not value.isdigit():
+            raise serializers.ValidationError("El RUC solo debe contener dígitos.")
+        if len(value) != 11:
+            raise serializers.ValidationError("El RUC debe tener exactamente 11 dígitos.")
+        if not value.startswith(('10', '15', '17', '20')):
+            raise serializers.ValidationError("El RUC debe iniciar con 10, 15, 17 o 20.")
+        return value
+
 
 class EquipoInstaladoSerializer(serializers.ModelSerializer):
     # Opcional: mostrar detalles del producto y cliente anidados
