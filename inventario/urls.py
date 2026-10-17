@@ -1,5 +1,9 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from .views import clientes, equipos, productos, reportes, suministros, tickets, usuarios
+
+router = DefaultRouter()
+router.register(r'categorias', productos.CategoriaViewSet, basename='categoria')
 
 urlpatterns = [
     # Productos
@@ -44,6 +48,5 @@ urlpatterns = [
     path('reportes/postventa/', reportes.reporte_postventa, name='reporte_postventa'),
 
     # API REST (Django REST Framework)
-    path('api/categorias/', productos.CategoriaListCreateView.as_view(), name='api_categorias'),
-    path('api/categorias/<int:pk>/', productos.CategoriaDetailView.as_view(), name='api_categoria_detalle'),
+    path('api/', include(router.urls)),
 ]

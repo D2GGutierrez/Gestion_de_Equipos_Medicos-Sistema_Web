@@ -47,3 +47,24 @@ def eliminar_cliente(request, pk):
     return render(request, 'inventario/confirmar_eliminar.html', {
         'objeto': cliente, 'titulo_entidad': 'Cliente', 'url_cancelar': reverse('lista_clientes'),
     })
+
+
+# ---------------------------------------------------------------------------
+# Ejercicio 7 - API de solo lectura: Clientes con sus equipos instalados anidados
+# ---------------------------------------------------------------------------
+from django.db.models import Prefetch
+from rest_framework import viewsets
+from ..models import Cliente, EquipoInstalado
+from ..serializer import ClienteConEquiposSerializer
+
+
+class ClienteConEquiposViewSet(viewsets.ReadOnlyModelViewSet):
+    """Solo list y retrieve (GET). POST/PUT/DELETE devuelven 405."""
+    serializer_class = ClienteConEquiposSerializer
+
+    def get_queryset(self):
+        # prefetch_related: 1:N inverso (equipos) -> 1 consulta extra para TODOS los clientes.
+        # select_related dentro del Prefetch: cada equipo trae su producto en el mismo SELECT.
+        return Cliente.objects.order_by('id').prefetch_related(
+            Prefetch('equipos', queryset=EquipoInstalado.objects.select_related('producto'))
+        )

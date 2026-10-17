@@ -78,3 +78,23 @@ class TicketSoporteSerializer(serializers.ModelSerializer):
             'estado', 'fecha_creacion', 'equipo', 'equipo_serie', 
             'tecnico', 'tecnico_nombre'
         ]
+
+
+# ---------------------------------------------------------------------------
+# Ejercicio 7 - Recurso de solo lectura con relaciones anidadas
+# Cliente (1) -> equipos instalados (N), cada equipo con el nombre de su producto.
+# ---------------------------------------------------------------------------
+class EquipoAnidadoSerializer(serializers.ModelSerializer):
+    producto_nombre = serializers.ReadOnlyField(source='producto.nombre')  # toca la FK 'producto'
+
+    class Meta:
+        model = EquipoInstalado
+        fields = ['id', 'numero_serie', 'estado', 'fecha_instalacion', 'fin_garantia', 'producto_nombre']
+
+
+class ClienteConEquiposSerializer(serializers.ModelSerializer):
+    equipos = EquipoAnidadoSerializer(many=True, read_only=True)  # relación inversa anidada
+
+    class Meta:
+        model = Cliente
+        fields = ['id', 'razon_social', 'numero_identificacion', 'activo', 'equipos']

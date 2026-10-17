@@ -4,7 +4,7 @@ from django.urls import reverse
 from ..forms import ProductoForm
 from ..models import Categoria, Producto, ProductoQuerySet
 
-from rest_framework import generics
+from rest_framework import generics, viewsets
 from ..serializer import CategoriaSerializer
 
 # Vista para Listar Productos (Optimizado con select_related para 1:1 y 1:N)
@@ -102,20 +102,10 @@ def detalle_categoria(request, pk):
         'categoria': categoria
     })
 
-class CategoriaListCreateView(generics.ListCreateAPIView):
+class CategoriaViewSet(viewsets.ModelViewSet):
     """
-    GET /api/categorias/        -> Lista todas las categorías
-    POST /api/categorias/       -> Crea una nueva categoría
+    ViewSet completo que provee automáticamente las acciones:
+    list, create, retrieve, update, partial_update y destroy.
     """
     queryset = Categoria.objects.all().order_by('id')
-    serializer_class = CategoriaSerializer
-
-class CategoriaDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    GET /api/categorias/<id>/    -> Obtiene el detalle de una categoría
-    PUT /api/categorias/<id>/    -> Actualización completa de la categoría
-    PATCH /api/categorias/<id>/  -> Actualización parcial de la categoría
-    DELETE /api/categorias/<id>/ -> Elimina la categoría
-    """
-    queryset = Categoria.objects.all()
     serializer_class = CategoriaSerializer
