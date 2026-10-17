@@ -4,7 +4,7 @@ from django.urls import reverse
 from ..forms import ProductoForm
 from ..models import Categoria, Producto, ProductoQuerySet
 
-from rest_framework import generics, viewsets
+from rest_framework import generics, viewsets, filters
 from ..serializer import CategoriaSerializer
 
 # Vista para Listar Productos (Optimizado con select_related para 1:1 y 1:N)
@@ -109,3 +109,8 @@ class CategoriaViewSet(viewsets.ModelViewSet):
     """
     queryset = Categoria.objects.all().order_by('id')
     serializer_class = CategoriaSerializer
+
+    # Ejercicio 8: ?search=... busca en nombre/descripcion; ?ordering=nombre (o -nombre) ordena
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['nombre', 'descripcion']
+    ordering_fields = ['id', 'nombre']

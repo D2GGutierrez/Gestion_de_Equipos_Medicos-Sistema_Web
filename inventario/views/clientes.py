@@ -50,11 +50,13 @@ def eliminar_cliente(request, pk):
 
 
 # ---------------------------------------------------------------------------
-# Ejercicio 7 - API de solo lectura: Clientes con sus equipos instalados anidados
+# Ejercicios 7 y 8 - API de solo lectura: Clientes con sus equipos instalados anidados
 # ---------------------------------------------------------------------------
 from django.db.models import Prefetch
 from rest_framework import viewsets
-from ..models import Cliente, EquipoInstalado
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from ..models import Cliente, EquipoInstalado, TicketSoporte
 from ..serializer import ClienteConEquiposSerializer
 
 
@@ -63,8 +65,22 @@ class ClienteConEquiposViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ClienteConEquiposSerializer
 
     def get_queryset(self):
-        # prefetch_related: 1:N inverso (equipos) -> 1 consulta extra para TODOS los clientes.
-        # select_related dentro del Prefetch: cada equipo trae su producto en el mismo SELECT.
-        return Cliente.objects.order_by('id').prefetch_related(
-            Prefetch('equipos', queryset=EquipoInstalado.objects.select_related('producto'))
-        )
+        equipos = EquipoInstalado.objects.select_related('producto')
+        qs = Cliente.objects.order_by('id')
+
+        estado = self.request.query_params.get('estado')
+        if estado:
+            estado = estado.upper()
+            equipos = equipos.filter(estado=estado)          
+            qs = qs.filter(equipos__estado=estado).distinct()
+
+        # prefetch_related (1:N inverso) + select_related('producto') dentro del Prefetch
+        return qs.prefetch_related(Prefetch('equipos', queryset=equipos))
+
+    # GET /api/clientes-equipos/con-tickets-urgentes/
+    @action(detail=False, methods=['get'], url_path='con-tickets-urgentes')
+    def con_tickets_urgentes(self, request):
+        """Clientes con tickets pendientes y urgentes. Reutiliza TicketSoporteQuerySet (Semana 7)."""
+        tickets = TicketSoporte.objects.pendientes().urgentes()
+        clientes = self.get_queryset().filter(equipos__tickets__in=tickets).distinct()
+        return Response(self.get_serializer(clientes, many=True).data)
