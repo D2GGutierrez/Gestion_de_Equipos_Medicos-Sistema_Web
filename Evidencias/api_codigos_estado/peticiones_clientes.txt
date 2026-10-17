@@ -1,0 +1,5 @@
+POST   /api/clientes/       -> 201  {"id": 1, "razon_social": "Clínica Demo SAC", "numero_identificacion": "20512345678", "email_contacto": "demo@
+GET    /api/clientes/       -> 200  [{"id": 1, "razon_social": "Clínica Demo SAC", "numero_identificacion": "20512345678", "email_contacto": "demo
+POST   /api/clientes/       -> 400  {"numero_identificacion": ["El RUC debe tener exactamente 11 dígitos."]}
+GET    /api/clientes/9999/  -> 404  {"detail": "No Cliente matches the given query."}
+DELETE /api/clientes/1/     -> 204  

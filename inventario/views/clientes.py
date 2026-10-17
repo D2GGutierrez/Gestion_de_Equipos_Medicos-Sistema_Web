@@ -84,3 +84,15 @@ class ClienteConEquiposViewSet(viewsets.ReadOnlyModelViewSet):
         tickets = TicketSoporte.objects.pendientes().urgentes()
         clientes = self.get_queryset().filter(equipos__tickets__in=tickets).distinct()
         return Response(self.get_serializer(clientes, many=True).data)
+
+
+# ---------------------------------------------------------------------------
+# Ejercicio 11 - CRUD completo del recurso Cliente con ModelViewSet (/api/clientes/)
+# ---------------------------------------------------------------------------
+from ..serializer import ClienteSerializer
+
+
+class ClienteViewSet(viewsets.ModelViewSet):
+    """list/create/retrieve/update/partial_update/destroy -> 200, 201, 400, 404, 204."""
+    queryset = Cliente.objects.all().order_by('id')
+    serializer_class = ClienteSerializer
