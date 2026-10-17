@@ -8,7 +8,7 @@ from django.db import transaction
 from inventario.models import (
     Categoria, Cliente, EquipoInstalado, Producto, Proveedor, Suministro, TicketSoporte, Usuario,
 )
-from inventario.views import sumar_meses
+from inventario.views.equipos import sumar_meses
 
 
 # Relación 1:N -> una Categoría agrupa muchos Productos
