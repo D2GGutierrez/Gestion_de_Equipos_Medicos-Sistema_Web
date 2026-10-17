@@ -77,17 +77,41 @@ def eliminar_ticket(request, pk):
 # ---------------------------------------------------------------------------
 # Ejercicio 12 - API de solo lectura: Tickets con equipo (cliente, producto) y tecnico anidados
 # ---------------------------------------------------------------------------
-from rest_framework import viewsets
+from rest_framework import viewsets, filters
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from ..models import TicketSoporte
 from ..serializer import TicketDetalleSerializer
 
 
 class TicketDetalleViewSet(viewsets.ReadOnlyModelViewSet):
-    """Solo GET (list y retrieve). Otros métodos -> 405."""
+    """Solo GET. Búsqueda, ordenamiento, filtros por parámetro y una acción propia (Ejercicio 13)."""
     serializer_class = TicketDetalleSerializer
+
+    # ?search=... busca en estos campos; ?ordering=prioridad (o -fecha_creacion) ordena
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['codigo_ticket', 'descripcion_falla', 'equipo__numero_serie']
+    ordering_fields = ['id', 'fecha_creacion', 'prioridad', 'estado']
 
     def get_queryset(self):
         # Todas son FK (N:1) -> select_related resuelve todo con JOINs en UNA consulta.
-        return TicketSoporte.objects.select_related(
+        qs = TicketSoporte.objects.select_related(
             'equipo__cliente', 'equipo__producto', 'tecnico'
         ).order_by('-fecha_creacion')
+
+        # Filtros por parámetro: ?estado=ABIERTO  y  ?prioridad=ALTA
+        estado = self.request.query_params.get('estado')
+        if estado:
+            qs = qs.filter(estado=estado.upper())
+        prioridad = self.request.query_params.get('prioridad')
+        if prioridad:
+            qs = qs.filter(prioridad=prioridad.upper())
+        return qs
+
+    # GET /api/tickets-detalle/urgentes-pendientes/
+    @action(detail=False, methods=['get'], url_path='urgentes-pendientes')
+    def urgentes_pendientes(self, request):
+        """Tickets abiertos/en proceso de prioridad alta o crítica.
+        Reutiliza TicketSoporteQuerySet (Semana 7): pendientes().urgentes()."""
+        qs = self.filter_queryset(self.get_queryset()).pendientes().urgentes()
+        return Response(self.get_serializer(qs, many=True).data)
