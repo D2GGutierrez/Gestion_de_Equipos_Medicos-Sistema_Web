@@ -42,4 +42,8 @@ urlpatterns = [
     # Reporte (aggregate / annotate)
     path('reporte/', reportes.reporte, name='reporte'),
     path('reportes/postventa/', reportes.reporte_postventa, name='reporte_postventa'),
+
+    # API REST (Django REST Framework)
+    path('api/categorias/', productos.CategoriaListCreateView.as_view(), name='api_categorias'),
+    path('api/categorias/<int:pk>/', productos.CategoriaDetailView.as_view(), name='api_categoria_detalle'),
 ]
