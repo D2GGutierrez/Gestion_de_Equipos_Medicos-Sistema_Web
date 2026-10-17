@@ -5,6 +5,7 @@ from .views import clientes, equipos, productos, reportes, suministros, tickets,
 router = DefaultRouter()
 router.register(r'categorias', productos.CategoriaViewSet, basename='categoria')
 router.register(r'clientes', clientes.ClienteViewSet, basename='cliente')
+router.register(r'tickets-detalle', tickets.TicketDetalleViewSet, basename='ticket-detalle')
 router.register(r'clientes-equipos', clientes.ClienteConEquiposViewSet, basename='cliente-equipos')
 
 urlpatterns = [

@@ -3,7 +3,7 @@ from .models import Cliente
 
 # serializers.py
 from rest_framework import serializers
-from .models import Cliente, Categoria, Proveedor, Producto, FichaTecnica, EquipoInstalado, TicketSoporte, Suministro
+from .models import Cliente, Categoria, Proveedor, Producto, FichaTecnica, EquipoInstalado, TicketSoporte, Suministro, Usuario
 
 
 class CategoriaSerializer(serializers.ModelSerializer):
@@ -109,3 +109,31 @@ class ClienteConEquiposSerializer(serializers.ModelSerializer):
     class Meta:
         model = Cliente
         fields = ['id', 'razon_social', 'numero_identificacion', 'activo', 'equipos']
+
+
+
+# ---------------------------------------------------------------------------
+# Ejercicio 12 - Ticket de solo lectura con relaciones anidadas (equipo -> cliente/producto, tecnico)
+# ---------------------------------------------------------------------------
+class TecnicoMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Usuario
+        fields = ['id', 'nombre_completo', 'rol']
+
+
+class EquipoMiniSerializer(serializers.ModelSerializer):
+    cliente = serializers.ReadOnlyField(source='cliente.razon_social')  
+    producto = serializers.ReadOnlyField(source='producto.nombre')       
+
+    class Meta:
+        model = EquipoInstalado
+        fields = ['id', 'numero_serie', 'estado', 'cliente', 'producto']
+
+
+class TicketDetalleSerializer(serializers.ModelSerializer):
+    equipo = EquipoMiniSerializer(read_only=True)
+    tecnico = TecnicoMiniSerializer(read_only=True)
+
+    class Meta:
+        model = TicketSoporte
+        fields = ['id', 'codigo_ticket', 'prioridad', 'estado', 'fecha_creacion', 'equipo', 'tecnico']

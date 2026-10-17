@@ -71,3 +71,23 @@ def eliminar_ticket(request, pk):
     return render(request, 'inventario/confirmar_eliminar.html', {
         'objeto': ticket, 'titulo_entidad': 'Ticket', 'url_cancelar': reverse('lista_tickets'),
     })
+
+
+
+# ---------------------------------------------------------------------------
+# Ejercicio 12 - API de solo lectura: Tickets con equipo (cliente, producto) y tecnico anidados
+# ---------------------------------------------------------------------------
+from rest_framework import viewsets
+from ..models import TicketSoporte
+from ..serializer import TicketDetalleSerializer
+
+
+class TicketDetalleViewSet(viewsets.ReadOnlyModelViewSet):
+    """Solo GET (list y retrieve). Otros métodos -> 405."""
+    serializer_class = TicketDetalleSerializer
+
+    def get_queryset(self):
+        # Todas son FK (N:1) -> select_related resuelve todo con JOINs en UNA consulta.
+        return TicketSoporte.objects.select_related(
+            'equipo__cliente', 'equipo__producto', 'tecnico'
+        ).order_by('-fecha_creacion')
