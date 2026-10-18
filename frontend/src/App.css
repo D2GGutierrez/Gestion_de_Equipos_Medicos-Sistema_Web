@@ -1,0 +1,46 @@
+/* Estilos del Ejercicio 8: se aplican con className */
+.app {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px;
+  font-family: system-ui, sans-serif;
+  color: #1f2937;
+}
+
+.titulo {
+  color: #0b5fa5;
+  border-bottom: 3px solid #0b5fa5;
+  padding-bottom: 8px;
+}
+
+.tarjeta {
+  background: #f3f7fb;
+  border-left: 5px solid #0b5fa5;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  list-style: none;
+}
+
+.agotado {
+  color: #b91c1c;
+  font-weight: bold;
+}
+
+.ultimas {
+  color: #b45309;
+  font-weight: bold;
+}
+
+.vacio {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.lista {
+  padding-left: 0;
+}
+
+.equipos {
+  margin: 6px 0;
+}

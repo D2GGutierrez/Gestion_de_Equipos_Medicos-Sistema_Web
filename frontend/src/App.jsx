@@ -1,4 +1,5 @@
-// Ejercicios 5, 6 y 7 - Lista con map()/key, renderizado condicional y listas anidadas
+// Ejercicios 5 a 8 - Lista con map()/key, renderizado condicional, listas anidadas y estilos
+import './App.css'
 // Misma forma que la respuesta de la API de la Semana 8 (GET /api/productos/):
 // los decimales llegan como TEXTO ("4500.00"), no como número.
 const productos = [
@@ -42,41 +43,42 @@ function totalCliente(cliente) {
 
 function App() {
   return (
-    <div>
-      <h1>Gestión de Equipos Médicos</h1>
+    <div className="app">
+      <h1 className="titulo">Gestión de Equipos Médicos</h1>
       <h2>Productos ({productos.length})</h2>
 
       {/* && : el mensaje solo aparece si el arreglo está vacío */}
-      {productos.length === 0 && <p>No hay registros</p>}
+      {productos.length === 0 && <p className="vacio">No hay registros</p>}
 
-      <ul>
+      <ul className="lista">
         {productos.map((p) => (
-          <li key={p.id}>
+          <li key={p.id} className="tarjeta">
             <strong>{p.nombre}</strong> — {p.marca} {p.modelo} · {p.categoria.nombre} ·
             S/ {Number(p.precio_base).toFixed(2)} ·{' '}
             {/* ternario: una cosa u otra según el stock */}
-            {p.stock > 0 ? `Stock: ${p.stock}` : 'Agotado'}
+            {p.stock > 0 ? `Stock: ${p.stock}` : <span className="agotado">Agotado</span>}
             {/* &&: solo se muestra si la condición es verdadera */}
-            {p.stock > 0 && p.stock <= 3 && <em> ¡Últimas unidades!</em>}
+            {p.stock > 0 && p.stock <= 3 && <em className="ultimas"> ¡Últimas unidades!</em>}
           </li>
         ))}
       </ul>
 
       <h2>Clientes y sus equipos instalados</h2>
       {/* map() EXTERNO: un <li> por cliente (key = id del cliente) */}
-      <ul>
+      <ul className="lista">
         {clientes.map((c) => (
-          <li key={c.id}>
-            <strong>{c.razon_social}</strong> ({c.equipos.length} equipos)
+          <li key={c.id} className="tarjeta">
+            <strong>{c.razon_social}</strong> ({c.equipos.length} {c.equipos.length === 1 ? 'equipo' : 'equipos'})
             {/* map() INTERNO: un <li> por equipo del cliente (key = id del equipo) */}
-            <ul>
+            <ul className="equipos">
               {c.equipos.map((e) => (
                 <li key={e.id}>
                   {e.numero_serie} — {e.producto_nombre} · {e.estado} · S/ {Number(e.precio_base).toFixed(2)}
                 </li>
               ))}
             </ul>
-            <p>Total de equipos: S/ {totalCliente(c).toFixed(2)}</p>
+            {/* style={{ }}: estilo en línea, un objeto JavaScript (propiedades en camelCase) */}
+            <p style={{ fontWeight: 'bold', color: '#065f46' }}>Total de equipos: S/ {totalCliente(c).toFixed(2)}</p>
           </li>
         ))}
       </ul>
