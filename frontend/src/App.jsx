@@ -64,6 +64,9 @@ function App() {
       </ul>
 
       <h2>Clientes y sus equipos instalados</h2>
+      {/* && : mensaje de lista vacía también para la segunda lista */}
+      {clientes.length === 0 && <p className="vacio">No hay clientes registrados</p>}
+
       {/* map() EXTERNO: un <li> por cliente (key = id del cliente) */}
       <ul className="lista">
         {clientes.map((c) => (
