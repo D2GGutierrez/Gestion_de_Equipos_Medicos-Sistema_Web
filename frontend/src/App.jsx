@@ -1,4 +1,4 @@
-// Ejercicio 5 - Lista con map() y key
+// Ejercicios 5 y 6 - Lista con map()/key y renderizado condicional
 // Misma forma que la respuesta de la API de la Semana 8 (GET /api/productos/):
 // los decimales llegan como TEXTO ("4500.00"), no como número.
 const productos = [
@@ -14,11 +14,19 @@ function App() {
     <div>
       <h1>Gestión de Equipos Médicos</h1>
       <h2>Productos ({productos.length})</h2>
+
+      {/* && : el mensaje solo aparece si el arreglo está vacío */}
+      {productos.length === 0 && <p>No hay registros</p>}
+
       <ul>
         {productos.map((p) => (
           <li key={p.id}>
             <strong>{p.nombre}</strong> — {p.marca} {p.modelo} · {p.categoria.nombre} ·
-            S/ {Number(p.precio_base).toFixed(2)} · Stock: {p.stock}
+            S/ {Number(p.precio_base).toFixed(2)} ·{' '}
+            {/* ternario: una cosa u otra según el stock */}
+            {p.stock > 0 ? `Stock: ${p.stock}` : 'Agotado'}
+            {/* &&: solo se muestra si la condición es verdadera */}
+            {p.stock > 0 && p.stock <= 3 && <em> ¡Últimas unidades!</em>}
           </li>
         ))}
       </ul>
