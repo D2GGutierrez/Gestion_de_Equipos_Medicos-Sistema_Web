@@ -97,3 +97,34 @@
   border-radius: 6px;
   font-size: 1rem;
 }
+
+/* Ejercicio 8: formulario */
+.formulario {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.formulario input {
+  padding: 7px 9px;
+  border: 1px solid #94a3b8;
+  border-radius: 6px;
+  font-size: 0.95rem;
+}
+
+.formulario button {
+  padding: 8px 12px;
+  background: #065f46;
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #b91c1c;
+  font-weight: bold;
+}
