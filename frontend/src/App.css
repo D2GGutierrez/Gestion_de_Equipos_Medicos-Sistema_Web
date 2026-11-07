@@ -133,3 +133,9 @@
 .principal {
   color: #b45309;
 }
+
+/* Ejercicio 11 (investigación): proveedor favorito */
+.tarjeta.favorito {
+  background: #ecfdf5;
+  border-left-color: #065f46;
+}
