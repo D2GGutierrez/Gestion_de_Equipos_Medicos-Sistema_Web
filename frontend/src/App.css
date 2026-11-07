@@ -44,3 +44,18 @@
 .equipos {
   margin: 6px 0;
 }
+
+/* Ejercicio 4: contenedor Tarjeta */
+.panel {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 4px 16px 10px;
+  margin: 18px 0;
+  background: #fff;
+}
+
+.panel-titulo {
+  color: #0b5fa5;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 6px;
+}

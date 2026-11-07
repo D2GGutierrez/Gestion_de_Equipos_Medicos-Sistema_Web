@@ -5,7 +5,7 @@ import ProductoCard from './ProductoCard.jsx'
 function ListaProductos({ productos }) {
   return (
     <div>
-      <h2>Productos ({productos.length})</h2>
+      <h3>Productos ({productos.length})</h3>
 
       {/* && : el mensaje solo aparece si el arreglo está vacío */}
       {productos.length === 0 && <p className="vacio">No hay registros</p>}
