@@ -1,7 +1,8 @@
-// Semana 10 - Ejercicios 1 y 2: los datos viven en src/datos.js y el primer componente está en src/components/
+// Semana 10 - Ejercicios 1 a 3: datos en src/datos.js y componentes en src/components/
 import './App.css'
 import { productos, clientes } from './datos.js'
 import ProductoCard from './components/ProductoCard.jsx'
+import ListaProductos from './components/ListaProductos.jsx'
 
 // Total por cliente: suma del precio de sus equipos (texto -> número con Number)
 function totalCliente(cliente) {
@@ -13,25 +14,12 @@ function App() {
     <div className="app">
       <h1 className="titulo">Gestión de Equipos Médicos</h1>
 
-      <h2>Ejercicio 2: el mismo componente, dos veces</h2>
-      <ProductoCard />
-      <ProductoCard />
-      <h2>Productos ({productos.length})</h2>
+      <ListaProductos productos={productos} />
 
-      {/* && : el mensaje solo aparece si el arreglo está vacío */}
-      {productos.length === 0 && <p className="vacio">No hay registros</p>}
-
+      {/* Prueba del valor por defecto: este producto no envía la prop "marca" */}
+      <h2>Prueba del valor por defecto</h2>
       <ul className="lista">
-        {productos.map((p) => (
-          <li key={p.id} className="tarjeta">
-            <strong>{p.nombre}</strong> — {p.marca} {p.modelo} · {p.categoria.nombre} ·
-            S/ {Number(p.precio_base).toFixed(2)} ·{' '}
-            {/* ternario: una cosa u otra según el stock */}
-            {p.stock > 0 ? `Stock: ${p.stock}` : <span className="agotado">Agotado</span>}
-            {/* &&: solo se muestra si la condición es verdadera */}
-            {p.stock > 0 && p.stock <= 3 && <em className="ultimas"> ¡Últimas unidades!</em>}
-          </li>
-        ))}
+        <ProductoCard nombre="Equipo de prueba" modelo="X-1" categoria="Sin categoría" precio="120.5" stock={4} />
       </ul>
 
       <h2>Clientes y sus equipos instalados</h2>
