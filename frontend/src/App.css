@@ -59,3 +59,30 @@
   border-bottom: 1px solid #e2e8f0;
   padding-bottom: 6px;
 }
+
+/* Ejercicio 6: botón y contador por producto */
+.acciones {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.acciones button {
+  background: #0b5fa5;
+  color: #fff;
+  border: 0;
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.acciones button:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+.pedido {
+  color: #065f46;
+  font-weight: bold;
+}
