@@ -1,4 +1,4 @@
-// Semana 10 - Ejercicios 1 a 8 y 10-11 (investigación): datos en src/datos.js y componentes en src/components/
+// Semana 10 - Ejercicios 1 a 8 y 10-12 (investigación): datos en src/datos.js y componentes en src/components/
 import './App.css'
 import { productos, clientes } from './datos.js'
 import ProductoCard from './components/ProductoCard.jsx'
