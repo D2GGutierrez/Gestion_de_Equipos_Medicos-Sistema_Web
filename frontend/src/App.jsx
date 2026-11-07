@@ -1,10 +1,12 @@
-// Semana 10 - Ejercicios 1 a 8: datos en src/datos.js y componentes en src/components/
+// Semana 10 - Ejercicios 1 a 8 y 10 (investigación): datos en src/datos.js y componentes en src/components/
 import './App.css'
 import { productos, clientes } from './datos.js'
 import ProductoCard from './components/ProductoCard.jsx'
 import ListaProductos from './components/ListaProductos.jsx'
 import Tarjeta from './components/Tarjeta.jsx'
 import ClienteCard from './components/ClienteCard.jsx'
+import ListaProveedores from './components/ListaProveedores.jsx'
+import { proveedores } from './datosInvestigacion.js'
 
 function App() {
   return (
@@ -31,6 +33,11 @@ function App() {
             <ClienteCard key={c.id} razonSocial={c.razon_social} equipos={c.equipos} />
           ))}
         </ul>
+      </Tarjeta>
+
+      {/* Investigación propia: Proveedor -> Suministro (modelo intermedio del ManyToMany) */}
+      <Tarjeta titulo="Investigación: proveedores y sus suministros">
+        <ListaProveedores proveedores={proveedores} />
       </Tarjeta>
     </div>
   )
