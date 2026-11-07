@@ -1,6 +1,7 @@
-// Semana 10 - Ejercicio 1: los datos viven en src/datos.js; src/components/ está listo para los componentes
+// Semana 10 - Ejercicios 1 y 2: los datos viven en src/datos.js y el primer componente está en src/components/
 import './App.css'
 import { productos, clientes } from './datos.js'
+import ProductoCard from './components/ProductoCard.jsx'
 
 // Total por cliente: suma del precio de sus equipos (texto -> número con Number)
 function totalCliente(cliente) {
@@ -11,6 +12,10 @@ function App() {
   return (
     <div className="app">
       <h1 className="titulo">Gestión de Equipos Médicos</h1>
+
+      <h2>Ejercicio 2: el mismo componente, dos veces</h2>
+      <ProductoCard />
+      <ProductoCard />
       <h2>Productos ({productos.length})</h2>
 
       {/* && : el mensaje solo aparece si el arreglo está vacío */}
