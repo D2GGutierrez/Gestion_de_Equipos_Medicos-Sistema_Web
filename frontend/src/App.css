@@ -139,3 +139,14 @@
   background: #ecfdf5;
   border-left-color: #065f46;
 }
+
+/* Laboratorio 11: botones del carrito (clase propia para no afectar otros botones) */
+.boton-quitar {
+  background: #b91c1c;
+  color: #fff;
+  border: 0;
+  border-radius: 4px;
+  padding: 3px 9px;
+  cursor: pointer;
+  margin-left: 8px;
+}

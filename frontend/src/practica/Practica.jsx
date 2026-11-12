@@ -1,7 +1,7 @@
 // Padre de la práctica del Laboratorio 11: ES EL DUEÑO del estado del carrito (estado elevado).
 // Los datos bajan por props y los avisos suben por funciones:
 //   Practica -> Catalogo -> ProductoCard   (productos, onAgregar)
-//   Practica -> Carrito                    (lineas)
+//   Practica -> Carrito                    (lineas, onQuitar, onVaciar)
 import { useState } from 'react'
 import { productos } from './datos.js'
 import Catalogo from './Catalogo.jsx'
@@ -22,10 +22,20 @@ function Practica() {
     }
   }
 
+  // Quitar: filter() devuelve un arreglo NUEVO sin la línea indicada (nunca splice)
+  function quitarDelCarrito(id) {
+    setCarrito(carrito.filter((l) => l.id !== id))
+  }
+
+  // Vaciar: se reemplaza el estado por un arreglo vacío nuevo
+  function vaciarCarrito() {
+    setCarrito([])
+  }
+
   return (
     <div>
       <Catalogo productos={productos} onAgregar={agregarAlCarrito} />
-      <Carrito lineas={carrito} />
+      <Carrito lineas={carrito} onQuitar={quitarDelCarrito} onVaciar={vaciarCarrito} />
     </div>
   )
 }
