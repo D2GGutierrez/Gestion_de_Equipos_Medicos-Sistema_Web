@@ -199,3 +199,11 @@
 .fila-equipo .boton-quitar {
   margin-left: 0;
 }
+
+.formulario select {
+  padding: 7px 9px;
+  border: 1px solid #94a3b8;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background: #fff;
+}

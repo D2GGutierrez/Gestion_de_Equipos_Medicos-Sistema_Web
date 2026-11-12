@@ -17,3 +17,20 @@ export const equiposIniciales = [
   { id: 15, numero_serie: 'MON-0201', fecha_instalacion: '2026-10-05', fin_garantia: '2028-10-05', estado: 'OPERATIVO', producto: 3, producto_nombre: 'Monitor Multiparámetro', cliente: 2, cliente_razon_social: 'Hospital Regional de Arequipa' },
   { id: 16, numero_serie: 'MON-0202', fecha_instalacion: '2026-10-05', fin_garantia: '2028-10-05', estado: 'OPERATIVO', producto: 3, producto_nombre: 'Monitor Multiparámetro', cliente: 2, cliente_razon_social: 'Hospital Regional de Arequipa' },
 ]
+
+// Listas para los <select> del formulario de alta (forma de /api/productos/ y /api/clientes/, solo lo necesario)
+export const productosPanel = [
+  { id: 1, nombre: 'Ecógrafo Doppler Color', meses_garantia: 24 },
+  { id: 2, nombre: 'Rayos X Portátil', meses_garantia: 36 },
+  { id: 3, nombre: 'Monitor Multiparámetro', meses_garantia: 24 },
+  { id: 4, nombre: 'Pulsioxímetro de Mesa', meses_garantia: 12 },
+  { id: 5, nombre: 'Ventilador Mecánico', meses_garantia: 36 },
+  { id: 6, nombre: 'Desfibrilador Bifásico', meses_garantia: 24 },
+  { id: 7, nombre: 'Electrocardiógrafo 12 Canales', meses_garantia: 24 },
+]
+
+export const clientesPanel = [
+  { id: 1, razon_social: 'Clínica San Gabriel S.A.' },
+  { id: 2, razon_social: 'Hospital Regional de Arequipa' },
+  { id: 3, razon_social: 'Centro Médico Santa Rosa E.I.R.L.' },
+]

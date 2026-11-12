@@ -1,9 +1,11 @@
 // PADRE del panel: el estado de los equipos vive AQUÍ (estado elevado) y se entrega a los hijos por props.
 // Los datos bajan por props y los avisos suben por las funciones que este componente define:
 //   PanelEquipos -> ListadoEquipos -> FilaEquipo   (equipos / equipo, onEliminar, onCambiarEstado)
+//   PanelEquipos -> FormularioEquipo               (equipos, productos, clientes, onGuardar)
 import { useState } from 'react'
-import { equiposIniciales } from '../datosPanel.js'
+import { equiposIniciales, productosPanel, clientesPanel } from '../datosPanel.js'
 import ListadoEquipos from './ListadoEquipos.jsx'
+import FormularioEquipo from './FormularioEquipo.jsx'
 
 function PanelEquipos() {
   // Único lugar donde se guarda el arreglo de equipos (forma de la respuesta de la API)
@@ -23,7 +25,18 @@ function PanelEquipos() {
     )
   }
 
-  return <ListadoEquipos equipos={equipos} onEliminar={eliminarEquipo} onCambiarEstado={cambiarEstado} />
+  // Alta: el formulario entrega el registro y el padre lo agrega con un arreglo NUEVO (spread, nunca push)
+  function guardarEquipo(nuevo) {
+    const id = Math.max(0, ...equipos.map((e) => e.id)) + 1 // provisional: en Django lo asigna la base de datos
+    setEquipos([...equipos, { id, ...nuevo }])
+  }
+
+  return (
+    <div>
+      <FormularioEquipo equipos={equipos} productos={productosPanel} clientes={clientesPanel} onGuardar={guardarEquipo} />
+      <ListadoEquipos equipos={equipos} onEliminar={eliminarEquipo} onCambiarEstado={cambiarEstado} />
+    </div>
+  )
 }
 
 export default PanelEquipos
