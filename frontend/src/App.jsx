@@ -1,4 +1,4 @@
-// Semana 10 - Ejercicios 1 a 8 y 10-12 (investigación): datos en src/datos.js y componentes en src/components/
+// Semana 10 - Ejercicios 1 a 8 y 10-12 (investigación); Lab 11 en src/practica: datos en src/datos.js y componentes en src/components/
 import './App.css'
 import { productos, clientes } from './datos.js'
 import ProductoCard from './components/ProductoCard.jsx'
@@ -7,6 +7,7 @@ import Tarjeta from './components/Tarjeta.jsx'
 import ClienteCard from './components/ClienteCard.jsx'
 import ListaProveedores from './components/ListaProveedores.jsx'
 import { proveedores } from './datosInvestigacion.js'
+import Practica from './practica/Practica.jsx'
 
 function App() {
   return (
@@ -38,6 +39,11 @@ function App() {
       {/* Investigación propia: Proveedor -> Suministro (modelo intermedio del ManyToMany) */}
       <Tarjeta titulo="Investigación: proveedores y sus suministros">
         <ListaProveedores proveedores={proveedores} />
+      </Tarjeta>
+
+      {/* Laboratorio 11 - Parte 1: mini catálogo con carrito (src/practica) */}
+      <Tarjeta titulo="Laboratorio 11 - Práctica: cafetería">
+        <Practica />
       </Tarjeta>
     </div>
   )
