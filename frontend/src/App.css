@@ -150,3 +150,13 @@
   cursor: pointer;
   margin-left: 8px;
 }
+
+/* Laboratorio 11: aviso temporal */
+.aviso {
+  background: #ecfdf5;
+  border: 1px solid #065f46;
+  color: #065f46;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-weight: bold;
+}

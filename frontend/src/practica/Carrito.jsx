@@ -1,11 +1,20 @@
 // Hermano de Catalogo: recibe las líneas del carrito por props y las muestra.
 // No guarda nada: el carrito vive en el padre (Practica) y baja por props.
+// Ejercicio 8: useEffect con [unidades] actualiza el título de la pestaña cuando cambia la cantidad.
 // Para quitar o vaciar NO modifica la lista: AVISA al padre con onQuitar(id) y onVaciar().
+import { useEffect } from 'react'
+
 function Carrito({ lineas, onQuitar, onVaciar }) {
   // Datos DERIVADOS: se calculan en cada renderizado a partir de las props, sin useState.
   // El precio llega como texto (como la API), por eso se convierte con Number().
   const total = lineas.reduce((suma, l) => suma + Number(l.precio) * l.cantidad, 0)
   const unidades = lineas.reduce((suma, l) => suma + l.cantidad, 0)
+
+  // Efecto: se ejecuta después de dibujar y SOLO cuando cambia "unidades" (arreglo de dependencias)
+  useEffect(() => {
+    document.title = `Carrito (${unidades}) — Cafetería`
+    console.log('Efecto de Carrito: título actualizado, unidades =', unidades)
+  }, [unidades])
 
   return (
     <div>

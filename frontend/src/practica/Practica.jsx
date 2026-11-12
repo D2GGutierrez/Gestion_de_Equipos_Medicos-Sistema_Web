@@ -8,18 +8,22 @@ import { productos } from './datos.js'
 import Catalogo from './Catalogo.jsx'
 import Carrito from './Carrito.jsx'
 import Buscador from './Buscador.jsx'
+import Aviso from './Aviso.jsx'
 
 function Practica() {
   // Líneas del carrito: { id, nombre, precio, cantidad }
   const [carrito, setCarrito] = useState([])
   // Texto de búsqueda: también vive en el padre, porque lo comparten Buscador (lo escribe) y Catalogo (lo usa)
   const [busqueda, setBusqueda] = useState('')
+  // Último producto agregado, para el Aviso temporal: { id, nombre } o null
+  const [aviso, setAviso] = useState(null)
 
   // Se filtra ANTES de entregar los productos a Catalogo (sin modificar el arreglo original)
   const texto = busqueda.trim().toLowerCase()
   const productosFiltrados = productos.filter((p) => p.nombre.toLowerCase().includes(texto))
 
   function agregarAlCarrito(producto) {
+    setAviso({ id: Date.now(), nombre: producto.nombre }) // id nuevo = el Aviso se vuelve a montar
     const existe = carrito.some((l) => l.id === producto.id)
     if (existe) {
       // Ya está: map() devuelve un arreglo NUEVO con la cantidad aumentada en esa línea
@@ -42,6 +46,7 @@ function Practica() {
 
   return (
     <div>
+      {aviso && <Aviso key={aviso.id} nombre={aviso.nombre} />}
       <Buscador valor={busqueda} onCambiar={setBusqueda} />
       <Catalogo productos={productosFiltrados} onAgregar={agregarAlCarrito} />
       <Carrito lineas={carrito} onQuitar={quitarDelCarrito} onVaciar={vaciarCarrito} />
