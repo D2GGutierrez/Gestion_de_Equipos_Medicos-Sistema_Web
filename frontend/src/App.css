@@ -160,3 +160,22 @@
   padding: 6px 12px;
   font-weight: bold;
 }
+
+/* Laboratorio 11 - Parte 2: panel de equipos */
+.estado {
+  margin-left: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+.estado-operativo { background: #d1fae5; color: #065f46; }
+.estado-mantenimiento { background: #fef3c7; color: #92400e; }
+.estado-inactivo { background: #fee2e2; color: #991b1b; }
+
+.detalle {
+  color: #6b7280;
+  font-size: 0.85rem;
+  margin-top: 2px;
+}

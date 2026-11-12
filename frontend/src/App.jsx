@@ -8,6 +8,7 @@ import ClienteCard from './components/ClienteCard.jsx'
 import ListaProveedores from './components/ListaProveedores.jsx'
 import { proveedores } from './datosInvestigacion.js'
 import Practica from './practica/Practica.jsx'
+import PanelEquipos from './components/PanelEquipos.jsx'
 
 function App() {
   return (
@@ -39,6 +40,11 @@ function App() {
       {/* Investigación propia: Proveedor -> Suministro (modelo intermedio del ManyToMany) */}
       <Tarjeta titulo="Investigación: proveedores y sus suministros">
         <ListaProveedores proveedores={proveedores} />
+      </Tarjeta>
+
+      {/* Laboratorio 11 - Parte 2: panel administrativo (entidad principal: equipos instalados) */}
+      <Tarjeta titulo="Panel administrativo: equipos instalados">
+        <PanelEquipos />
       </Tarjeta>
 
       {/* Laboratorio 11 - Parte 1: mini catálogo con carrito (src/practica) */}
