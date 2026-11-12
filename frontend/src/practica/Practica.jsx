@@ -1,15 +1,23 @@
 // Padre de la práctica del Laboratorio 11: ES EL DUEÑO del estado del carrito (estado elevado).
 // Los datos bajan por props y los avisos suben por funciones:
-//   Practica -> Catalogo -> ProductoCard   (productos, onAgregar)
+//   Practica -> Buscador                   (valor, onCambiar)
+//   Practica -> Catalogo -> ProductoCard   (productos filtrados, onAgregar)
 //   Practica -> Carrito                    (lineas, onQuitar, onVaciar)
 import { useState } from 'react'
 import { productos } from './datos.js'
 import Catalogo from './Catalogo.jsx'
 import Carrito from './Carrito.jsx'
+import Buscador from './Buscador.jsx'
 
 function Practica() {
   // Líneas del carrito: { id, nombre, precio, cantidad }
   const [carrito, setCarrito] = useState([])
+  // Texto de búsqueda: también vive en el padre, porque lo comparten Buscador (lo escribe) y Catalogo (lo usa)
+  const [busqueda, setBusqueda] = useState('')
+
+  // Se filtra ANTES de entregar los productos a Catalogo (sin modificar el arreglo original)
+  const texto = busqueda.trim().toLowerCase()
+  const productosFiltrados = productos.filter((p) => p.nombre.toLowerCase().includes(texto))
 
   function agregarAlCarrito(producto) {
     const existe = carrito.some((l) => l.id === producto.id)
@@ -34,7 +42,8 @@ function Practica() {
 
   return (
     <div>
-      <Catalogo productos={productos} onAgregar={agregarAlCarrito} />
+      <Buscador valor={busqueda} onCambiar={setBusqueda} />
+      <Catalogo productos={productosFiltrados} onAgregar={agregarAlCarrito} />
       <Carrito lineas={carrito} onQuitar={quitarDelCarrito} onVaciar={vaciarCarrito} />
     </div>
   )
