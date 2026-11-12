@@ -179,3 +179,23 @@
   font-size: 0.85rem;
   margin-top: 2px;
 }
+
+/* Laboratorio 11 - Parte 2: botón de acción de la fila */
+.boton-accion {
+  background: #0b5fa5;
+  color: #fff;
+  border: 0;
+  border-radius: 4px;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+
+.fila-equipo .acciones {
+  margin-top: 6px;
+  display: flex;
+  gap: 8px;
+}
+
+.fila-equipo .boton-quitar {
+  margin-left: 0;
+}
