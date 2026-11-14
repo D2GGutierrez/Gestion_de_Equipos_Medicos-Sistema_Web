@@ -9,6 +9,7 @@ import ListaProveedores from './components/ListaProveedores.jsx'
 import { proveedores } from './datosInvestigacion.js'
 import Practica from './practica/Practica.jsx'
 import PanelEquipos from './components/PanelEquipos.jsx'
+import ListaPractica from './practica/ListaPractica.jsx'
 
 function App() {
   return (
@@ -45,6 +46,11 @@ function App() {
       {/* Laboratorio 11 - Parte 2: panel administrativo (entidad principal: equipos instalados) */}
       <Tarjeta titulo="Panel administrativo: equipos instalados">
         <PanelEquipos />
+      </Tarjeta>
+
+      {/* Laboratorio 12 - Parte 1: lista de clientes pedida a la API de Django (src/practica) */}
+      <Tarjeta titulo="Laboratorio 12 - Práctica: clientes desde la API">
+        <ListaPractica />
       </Tarjeta>
 
       {/* Laboratorio 11 - Parte 1: mini catálogo con carrito (src/practica) */}
