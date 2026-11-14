@@ -1,11 +1,13 @@
+// Lab 12 Ej 10: los equipos ya NO están escritos a mano: se piden a la API de Django con GET dentro de useEffect.
 // PADRE del panel: el estado vive AQUÍ (estado elevado) y se entrega a los hijos por props.
 // Los datos bajan por props y los avisos suben por las funciones que este componente define:
 //   PanelEquipos -> ResumenEquipos                 (equipos)                      [hermano del listado]
 //   PanelEquipos -> BuscadorEquipos                (valor, onCambiar)
 //   PanelEquipos -> FormularioEquipo               (equipos, productos, clientes, onGuardar)
 //   PanelEquipos -> ListadoEquipos -> FilaEquipo   (equipos filtrados, onEliminar, onCambiarEstado)
-import { useState } from 'react'
-import { equiposIniciales, productosPanel, clientesPanel } from '../datosPanel.js'
+import { useEffect, useState } from 'react'
+import api from '../api.js'
+import { productosPanel, clientesPanel } from '../datosPanel.js'
 import ResumenEquipos from './ResumenEquipos.jsx'
 import BuscadorEquipos from './BuscadorEquipos.jsx'
 import FormularioEquipo from './FormularioEquipo.jsx'
@@ -13,10 +15,28 @@ import ListadoEquipos from './ListadoEquipos.jsx'
 import AvisoPanel from './AvisoPanel.jsx'
 
 function PanelEquipos() {
-  // Estado del panel: el arreglo de equipos, el texto de búsqueda y el último aviso { id, texto }
-  const [equipos, setEquipos] = useState(equiposIniciales)
+  // Estado del panel: los equipos que llegan de la API, los estados de la petición, la búsqueda y el último aviso { id, texto }
+  const [equipos, setEquipos] = useState([])
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState(null)
   const [busqueda, setBusqueda] = useState('')
   const [aviso, setAviso] = useState(null)
+
+  // GET /api/equipos/ una sola vez al montar el panel. El padre guarda los datos y los baja por props.
+  useEffect(() => {
+    async function cargarEquipos() {
+      try {
+        const respuesta = await api.get('/equipos/')
+        setEquipos(respuesta.data) // los campos de la API ya coinciden con los que usan los hijos (sin decimales que adaptar)
+      } catch (err) {
+        console.error('Error al pedir los equipos:', err.message)
+        setError('No se pudo cargar la lista de equipos')
+      } finally {
+        setCargando(false)
+      }
+    }
+    cargarEquipos()
+  }, [])
 
   // Búsqueda: se filtra por número de serie ANTES de entregar los equipos al listado (sin tocar el original)
   const texto = busqueda.trim().toLowerCase()
@@ -47,6 +67,10 @@ function PanelEquipos() {
     setEquipos([...equipos, { id, ...nuevo }])
     avisar(`Equipo ${nuevo.numero_serie} agregado`)
   }
+
+  // Estados de la petición: mientras carga o si falla, no se dibuja el resto del panel
+  if (cargando) return <p className="aviso">Cargando equipos...</p>
+  if (error) return <p className="error">{error}</p>
 
   return (
     <div>
