@@ -222,3 +222,8 @@
   margin-left: 0;
   font-size: 0.85rem;
 }
+
+/* Laboratorio 12: acciones en la lista de clientes de la API */
+.lista-api .boton-accion {
+  margin-left: 12px;
+}

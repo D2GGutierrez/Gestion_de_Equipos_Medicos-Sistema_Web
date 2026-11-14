@@ -1,4 +1,4 @@
-// Laboratorio 12 - Ejercicios 4 a 6: GET con useEffect, estados de carga/error y alta con POST (formulario controlado).
+// Laboratorio 12 - Ejercicios 4 a 7: GET con useEffect, estados de carga/error, alta con POST, DELETE y PATCH.
 import { useEffect, useState } from 'react'
 import api from '../api.js'
 
@@ -12,6 +12,7 @@ function ListaPractica() {
   const [formulario, setFormulario] = useState(vacio)
   const [errores, setErrores] = useState({})
   const [enviando, setEnviando] = useState(false)
+  const [fallo, setFallo] = useState('') // Ejercicio 7: mensaje si falla un DELETE o un PATCH
 
   useEffect(() => {
     async function cargarClientes() {
@@ -52,6 +53,28 @@ function ListaPractica() {
     }
   }
 
+  // Ejercicio 7 - DELETE: se quita del estado SOLO cuando el servidor confirma con 204
+  async function eliminar(id) {
+    setFallo('')
+    try {
+      await api.delete(`/clientes/${id}/`) // 204 No Content (sin cuerpo)
+      setClientes(clientes.filter((c) => c.id !== id)) // arreglo NUEVO sin el cliente eliminado
+    } catch {
+      setFallo('No se pudo eliminar el cliente')
+    }
+  }
+
+  // Ejercicio 7 - PATCH: envía solo el campo que cambia; el estado se actualiza con map()
+  async function cambiarActivo(cliente) {
+    setFallo('')
+    try {
+      const respuesta = await api.patch(`/clientes/${cliente.id}/`, { activo: !cliente.activo }) // 200 con el registro completo
+      setClientes(clientes.map((c) => (c.id === cliente.id ? respuesta.data : c)))
+    } catch {
+      setFallo('No se pudo modificar el cliente')
+    }
+  }
+
   // Muestra los mensajes de un campo (si el serializer devolvió alguno)
   function mensajes(campo) {
     return errores[campo] && errores[campo].map((m) => <span className="error" key={m}>{m}</span>)
@@ -63,10 +86,12 @@ function ListaPractica() {
   else if (clientes.length === 0) contenido = <p className="vacio">No hay clientes registrados</p>
   else {
     contenido = (
-      <ul className="lista">
+      <ul className="lista lista-api">
         {clientes.map((c) => (
           <li key={c.id}>
             <strong>{c.razon_social}</strong> — RUC {c.numero_identificacion} ({c.activo ? 'activo' : 'inactivo'})
+            <button className="boton-accion" onClick={() => cambiarActivo(c)}>{c.activo ? 'Desactivar' : 'Activar'}</button>
+            <button className="boton-quitar" onClick={() => eliminar(c.id)}>Eliminar</button>
           </li>
         ))}
       </ul>
@@ -89,6 +114,7 @@ function ListaPractica() {
         {mensajes('general')}
         <button type="submit" disabled={enviando}>{enviando ? 'Guardando...' : 'Agregar cliente'}</button>
       </form>
+      {fallo && <p className="error">{fallo}</p>}
       {contenido}
     </div>
   )
