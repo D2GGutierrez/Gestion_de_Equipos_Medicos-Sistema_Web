@@ -264,3 +264,24 @@
   padding: 3px 9px;
   cursor: pointer;
 }
+
+/* Laboratorio 12 - Ej 13: buscador + filtro por estado */
+.barra-filtros {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  align-items: center;
+}
+
+.barra-filtros .buscador {
+  margin-top: 0;
+  flex: 1;
+}
+
+.filtro-estado {
+  padding: 8px 10px;
+  border: 1px solid #94a3b8;
+  border-radius: 6px;
+  font-size: 1rem;
+  background: #fff;
+}

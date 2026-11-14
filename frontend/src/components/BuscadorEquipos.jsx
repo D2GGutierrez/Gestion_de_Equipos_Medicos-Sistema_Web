@@ -4,7 +4,7 @@ function BuscadorEquipos({ valor, onCambiar }) {
     <input
       className="buscador"
       type="text"
-      placeholder="Buscar por número de serie..."
+      placeholder="Buscar por serie, producto o cliente..."
       value={valor}
       onChange={(e) => onCambiar(e.target.value)}
     />
