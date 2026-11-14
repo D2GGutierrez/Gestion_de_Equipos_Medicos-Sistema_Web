@@ -1,4 +1,4 @@
-// Laboratorio 12 - Ejercicios 4 a 7: GET con useEffect, estados de carga/error, alta con POST, DELETE y PATCH.
+// Laboratorio 12 - Ejercicios 4 a 8: GET con useEffect, estados de carga/error, alta con POST, DELETE, PATCH y búsqueda.
 import { useEffect, useState } from 'react'
 import api from '../api.js'
 
@@ -12,22 +12,31 @@ function ListaPractica() {
   const [formulario, setFormulario] = useState(vacio)
   const [errores, setErrores] = useState({})
   const [enviando, setEnviando] = useState(false)
+  const [buscar, setBuscar] = useState('') // Ejercicio 8: texto del buscador (campo controlado)
   const [fallo, setFallo] = useState('') // Ejercicio 7: mensaje si falla un DELETE o un PATCH
 
+  // Ejercicio 8: el efecto depende de [buscar]: se vuelve a ejecutar cada vez que cambia el texto
   useEffect(() => {
+    let vigente = true // si el texto cambia antes de que llegue la respuesta, la respuesta vieja se ignora
     async function cargarClientes() {
+      setCargando(true)
+      setError(null)
       try {
-        const respuesta = await api.get('/clientes/')
-        setClientes(respuesta.data)
+        // Axios arma la URL: /clientes/?search=texto
+        const respuesta = await api.get('/clientes/', { params: { search: buscar } })
+        if (vigente) setClientes(respuesta.data)
       } catch (err) {
         console.error('Error al pedir los clientes:', err.message)
-        setError('No se pudo cargar la lista')
+        if (vigente) setError('No se pudo cargar la lista')
       } finally {
-        setCargando(false)
+        if (vigente) setCargando(false)
       }
     }
     cargarClientes()
-  }, [])
+    return () => {
+      vigente = false // limpieza: se ejecuta antes de la siguiente búsqueda o al desmontar
+    }
+  }, [buscar])
 
   // Un solo manejador para todos los campos: usa el atributo name del input
   function cambiar(e) {
@@ -83,7 +92,8 @@ function ListaPractica() {
   let contenido
   if (cargando) contenido = <p className="aviso">Cargando...</p>
   else if (error) contenido = <p className="error">{error}</p>
-  else if (clientes.length === 0) contenido = <p className="vacio">No hay clientes registrados</p>
+  else if (clientes.length === 0 && buscar === '') contenido = <p className="vacio">No hay clientes registrados</p>
+  else if (clientes.length === 0) contenido = <p className="vacio">No hay clientes que coincidan con «{buscar}»</p>
   else {
     contenido = (
       <ul className="lista lista-api">
@@ -114,6 +124,12 @@ function ListaPractica() {
         {mensajes('general')}
         <button type="submit" disabled={enviando}>{enviando ? 'Guardando...' : 'Agregar cliente'}</button>
       </form>
+      <input
+        className="buscador"
+        placeholder="Buscar por razón social o RUC..."
+        value={buscar}
+        onChange={(e) => setBuscar(e.target.value)}
+      />
       {fallo && <p className="error">{fallo}</p>}
       {contenido}
     </div>

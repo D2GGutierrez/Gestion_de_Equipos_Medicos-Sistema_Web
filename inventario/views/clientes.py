@@ -53,7 +53,7 @@ def eliminar_cliente(request, pk):
 # Ejercicios 7 y 8 - API de solo lectura: Clientes con sus equipos instalados anidados
 # ---------------------------------------------------------------------------
 from django.db.models import Prefetch
-from rest_framework import viewsets
+from rest_framework import filters, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from ..models import Cliente, EquipoInstalado, TicketSoporte
@@ -96,3 +96,7 @@ class ClienteViewSet(viewsets.ModelViewSet):
     """list/create/retrieve/update/partial_update/destroy -> 200, 201, 400, 404, 204."""
     queryset = Cliente.objects.all().order_by('id')
     serializer_class = ClienteSerializer
+
+    # Lab 12 Ej 8: ?search=... busca (sin distinguir mayúsculas) en razón social y RUC
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['razon_social', 'numero_identificacion']
