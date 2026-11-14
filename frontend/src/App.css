@@ -241,3 +241,26 @@
 .formulario .boton-cancelar {
   background: #475569;
 }
+
+/* Laboratorio 12 - Ej 12: confirmación al eliminar y aviso de error */
+.aviso-error {
+  background: #fef2f2;
+  border-color: #b91c1c;
+  color: #b91c1c;
+}
+
+.fila-equipo .pregunta {
+  align-self: center;
+  color: #b91c1c;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+.boton-cancelar-fila {
+  background: #475569;
+  color: #fff;
+  border: 0;
+  border-radius: 4px;
+  padding: 3px 9px;
+  cursor: pointer;
+}

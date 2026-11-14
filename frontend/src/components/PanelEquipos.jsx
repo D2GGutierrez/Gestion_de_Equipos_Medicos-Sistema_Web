@@ -1,4 +1,4 @@
-// Lab 12 Ej 10 y 11: los datos vienen de la API de Django (GET con useEffect) y el alta y la edición se envían con POST y PATCH.
+// Lab 12 Ej 10 a 12: los datos vienen de la API de Django (GET con useEffect); el alta, la edición y la eliminación se envían con POST, PATCH y DELETE.
 // PADRE del panel: el estado vive AQUÍ (estado elevado) y se entrega a los hijos por props.
 // Los datos bajan por props y los avisos suben por las funciones que este componente define:
 //   PanelEquipos -> ResumenEquipos                 (equipos)                      [hermano del listado]
@@ -54,15 +54,27 @@ function PanelEquipos() {
   const texto = busqueda.trim().toLowerCase()
   const equiposFiltrados = equipos.filter((e) => e.numero_serie.toLowerCase().includes(texto))
 
-  function avisar(mensaje) {
-    setAviso({ id: Date.now(), texto: mensaje }) // id nuevo = el AvisoPanel se vuelve a montar
+  function avisar(mensaje, tipo = 'exito') {
+    setAviso({ id: Date.now(), texto: mensaje, tipo }) // id nuevo = el AvisoPanel se vuelve a montar
   }
 
-  // Eliminar: todavía solo cambia el estado de React (se conecta a DELETE en el Ejercicio 12)
-  function eliminarEquipo(id) {
+  // Eliminar (la confirmación ya la pidió la fila): DELETE y, según la respuesta, se actualiza el estado
+  async function eliminarEquipo(id) {
     const equipo = equipos.find((e) => e.id === id)
-    setEquipos(equipos.filter((e) => e.id !== id))
-    avisar(`Equipo ${equipo.numero_serie} eliminado`)
+    try {
+      await api.delete(`/equipos/${id}/`) // 204 No Content
+      setEquipos(equipos.filter((e) => e.id !== id)) // arreglo NUEVO sin el equipo eliminado
+      avisar(`Equipo ${equipo.numero_serie} eliminado`)
+    } catch (err) {
+      if (err.response && err.response.status === 404) {
+        // 404: el registro ya no existe en el servidor (alguien lo borró antes); la lista se pone al día
+        setEquipos(equipos.filter((e) => e.id !== id))
+        avisar(`El equipo ${equipo.numero_serie} ya no existe en el servidor (404). Se quitó de la lista.`, 'error')
+      } else {
+        avisar(`No se pudo eliminar el equipo ${equipo.numero_serie}`, 'error')
+      }
+    }
+    if (seleccionado && seleccionado.id === id) setSeleccionado(null) // si se estaba editando, se cierra la edición
   }
 
   // Cambiar estado: PATCH con solo el campo que cambia; el estado se actualiza con map() cuando la API responde 200
@@ -123,7 +135,7 @@ function PanelEquipos() {
   return (
     <div>
       <ResumenEquipos equipos={equipos} />
-      {aviso && <AvisoPanel key={aviso.id} texto={aviso.texto} />}
+      {aviso && <AvisoPanel key={aviso.id} texto={aviso.texto} tipo={aviso.tipo} />}
       <FormularioEquipo
         key={`${seleccionado ? seleccionado.id : 'nuevo'}-${version}`}
         productos={productos}
