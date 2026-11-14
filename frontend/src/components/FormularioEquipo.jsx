@@ -1,8 +1,16 @@
-// Formulario de alta (hijo): campos CONTROLADOS (value + onChange). Valida antes de enviar y, si todo
-// está bien, entrega el equipo nuevo al padre con onGuardar(equipo). No agrega nada a la lista por sí mismo.
+// Formulario de alta y edición (hijo): campos CONTROLADOS (value + onChange).
+// Lab 12 Ej 11: ya no agrega nada por sí mismo ni valida la serie: arma el registro y lo entrega al padre con
+// onGuardar(datos). El padre decide si es POST (alta) o PATCH (edición) y devuelve los errores 400 de la API en "errores".
 import { useState } from 'react'
 
-const FORM_VACIO = { numero_serie: '', producto: '', cliente: '', fecha_instalacion: '', estado: 'OPERATIVO' }
+const ETIQUETAS = {
+  numero_serie: 'Número de serie',
+  producto: 'Producto',
+  cliente: 'Cliente',
+  fecha_instalacion: 'Fecha de instalación',
+  fin_garantia: 'Fin de garantía',
+  estado: 'Estado',
+}
 
 // fin_garantia = fecha de instalación + meses de garantía del producto (formato AAAA-MM-DD)
 function sumarMeses(fecha, meses) {
@@ -11,9 +19,30 @@ function sumarMeses(fecha, meses) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-function FormularioEquipo({ equipos, productos, clientes, onGuardar }) {
-  const [form, setForm] = useState(FORM_VACIO)
-  const [error, setError] = useState('')
+// Convierte { campo: ["mensaje", ...] } (formato de DRF) en una lista de textos legibles
+function textosDeErrores(errores) {
+  return Object.entries(errores).flatMap(([campo, mensajes]) => {
+    const lista = Array.isArray(mensajes) ? mensajes : [String(mensajes)]
+    const etiqueta = ETIQUETAS[campo]
+    return lista.map((m) => (etiqueta ? `${etiqueta}: ${m}` : m))
+  })
+}
+
+function FormularioEquipo({ productos, clientes, equipoEditando, errores, guardando, onGuardar, onCancelar }) {
+  // Estado inicial: vacío para un alta, o con los datos del equipo seleccionado para editar.
+  // El padre cambia la "key" del formulario cuando cambia el equipo seleccionado, así el estado se reinicia.
+  const [form, setForm] = useState(
+    equipoEditando
+      ? {
+          numero_serie: equipoEditando.numero_serie,
+          producto: String(equipoEditando.producto),
+          cliente: String(equipoEditando.cliente),
+          fecha_instalacion: equipoEditando.fecha_instalacion,
+          estado: equipoEditando.estado,
+        }
+      : { numero_serie: '', producto: '', cliente: '', fecha_instalacion: '', estado: 'OPERATIVO' },
+  )
+  const [errorLocal, setErrorLocal] = useState('')
 
   function manejarCambio(e) {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -21,40 +50,32 @@ function FormularioEquipo({ equipos, productos, clientes, onGuardar }) {
 
   function manejarSubmit(e) {
     e.preventDefault()
-
-    // Reglas del modelo EquipoInstalado / API de la Semana 8
-    const serie = form.numero_serie.trim().toUpperCase()
-    if (serie === '') return setError('El número de serie es obligatorio')
-    if (equipos.some((eq) => eq.numero_serie.toUpperCase() === serie)) {
-      return setError('Ya existe un equipo con ese número de serie')
-    }
-    if (form.producto === '') return setError('Seleccione un producto')
-    if (form.cliente === '') return setError('Seleccione un cliente')
-    if (form.fecha_instalacion === '') return setError('La fecha de instalación es obligatoria')
-    if (form.fecha_instalacion > new Date().toISOString().slice(0, 10)) {
-      return setError('La fecha de instalación no puede ser futura')
-    }
+    // Solo campos vacíos; el formato y la unicidad del número de serie los valida la API (validate_numero_serie)
+    if (form.numero_serie.trim() === '') return setErrorLocal('El número de serie es obligatorio')
+    if (form.producto === '') return setErrorLocal('Seleccione un producto')
+    if (form.cliente === '') return setErrorLocal('Seleccione un cliente')
+    if (form.fecha_instalacion === '') return setErrorLocal('La fecha de instalación es obligatoria')
+    setErrorLocal('')
 
     const producto = productos.find((p) => p.id === Number(form.producto))
-    const cliente = clientes.find((c) => c.id === Number(form.cliente))
-    // Registro con la forma de la API (sin id: lo asigna el padre / la base de datos)
+    // En edición, si no cambió ni la fecha ni el producto, se conserva la garantía que ya tenía el equipo
+    const conservarGarantia =
+      equipoEditando &&
+      equipoEditando.fecha_instalacion === form.fecha_instalacion &&
+      equipoEditando.producto === producto.id
     onGuardar({
-      numero_serie: serie,
+      numero_serie: form.numero_serie.trim(),
       fecha_instalacion: form.fecha_instalacion,
-      fin_garantia: sumarMeses(form.fecha_instalacion, producto.meses_garantia),
+      fin_garantia: conservarGarantia ? equipoEditando.fin_garantia : sumarMeses(form.fecha_instalacion, producto.meses_garantia),
       estado: form.estado,
       producto: producto.id,
-      producto_nombre: producto.nombre,
-      cliente: cliente.id,
-      cliente_razon_social: cliente.razon_social,
+      cliente: Number(form.cliente),
     })
-    setForm(FORM_VACIO) // campos vacíos tras un alta correcta
-    setError('')
   }
 
   return (
     <form className="formulario" onSubmit={manejarSubmit}>
-      <input name="numero_serie" placeholder="Número de serie" value={form.numero_serie} onChange={manejarCambio} />
+      <input name="numero_serie" placeholder="Número de serie (ej. ECO-0003)" value={form.numero_serie} onChange={manejarCambio} />
       <select name="producto" value={form.producto} onChange={manejarCambio}>
         <option value="">Producto...</option>
         {productos.map((p) => (
@@ -73,8 +94,17 @@ function FormularioEquipo({ equipos, productos, clientes, onGuardar }) {
         <option value="MANTENIMIENTO">En mantenimiento</option>
         <option value="INACTIVO">Inactivo</option>
       </select>
-      <button type="submit">Agregar equipo</button>
-      {error && <p className="error">{error}</p>}
+      <button type="submit" disabled={guardando}>
+        {guardando ? 'Guardando...' : equipoEditando ? 'Guardar cambios' : 'Agregar equipo'}
+      </button>
+      {equipoEditando && (
+        <button type="button" className="boton-cancelar" onClick={onCancelar}>Cancelar edición</button>
+      )}
+      {errorLocal && <p className="error">{errorLocal}</p>}
+      {/* Mensajes 400 que envía el serializer de Django, junto al formulario */}
+      {textosDeErrores(errores).map((t) => (
+        <p className="error" key={t}>{t}</p>
+      ))}
     </form>
   )
 }

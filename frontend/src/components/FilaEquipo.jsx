@@ -1,6 +1,6 @@
 // Fila del listado: recibe UN equipo y dos funciones por props. NO modifica la lista:
-// cuando el usuario hace clic, AVISA al padre con onEliminar(id) u onCambiarEstado(id).
-function FilaEquipo({ equipo, onEliminar, onCambiarEstado }) {
+// cuando el usuario hace clic, AVISA al padre con onEditar(id), onEliminar(id) u onCambiarEstado(id).
+function FilaEquipo({ equipo, onEditar, onEliminar, onCambiarEstado }) {
   return (
     <li className="tarjeta fila-equipo">
       <strong>{equipo.numero_serie}</strong> — {equipo.producto_nombre}
@@ -11,6 +11,9 @@ function FilaEquipo({ equipo, onEliminar, onCambiarEstado }) {
       <div className="acciones">
         <button className="boton-accion" onClick={() => onCambiarEstado(equipo.id)}>
           {equipo.estado === 'OPERATIVO' ? 'Poner en mantenimiento' : 'Marcar operativo'}
+        </button>
+        <button className="boton-editar" onClick={() => onEditar(equipo.id)}>
+          Editar
         </button>
         <button className="boton-quitar" onClick={() => onEliminar(equipo.id)}>
           Eliminar

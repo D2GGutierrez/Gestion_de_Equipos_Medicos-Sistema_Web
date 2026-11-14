@@ -227,3 +227,17 @@
 .lista-api .boton-accion {
   margin-left: 12px;
 }
+
+/* Laboratorio 12 - Ej 11: edición de equipos */
+.boton-editar {
+  background: #92400e;
+  color: #fff;
+  border: 0;
+  border-radius: 4px;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+
+.formulario .boton-cancelar {
+  background: #475569;
+}

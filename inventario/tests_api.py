@@ -129,3 +129,20 @@ class CodigosEstadoEquipoTest(APITestCase):
         self.assertEqual(len(self.client.get(f'/api/equipos/?cliente={self.cli.pk}').data), 2)
         series = [e['numero_serie'] for e in self.client.get('/api/equipos/?ordering=-numero_serie').data]
         self.assertEqual(series, ['MON-0001', 'ECO-0001'])
+
+
+class ProductoSoloLecturaTest(APITestCase):
+    """Lab 12 Ej 11 - /api/productos/ es de solo lectura."""
+
+    def setUp(self):
+        self.prod = Producto.objects.create(codigo_sku='SKU-9', nombre='Monitor', marca='M', modelo='X',
+                                            precio_base=100, meses_garantia=24, stock=1)
+
+    def test_200_listar_con_meses_de_garantia(self):
+        r = self.client.get('/api/productos/')
+        self.assertEqual(r.status_code, status.HTTP_200_OK)
+        self.assertEqual(r.data[0]['meses_garantia'], 24)
+
+    def test_405_no_permite_crear_ni_borrar(self):
+        self.assertEqual(self.client.post('/api/productos/', {}, format='json').status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+        self.assertEqual(self.client.delete(f'/api/productos/{self.prod.pk}/').status_code, status.HTTP_405_METHOD_NOT_ALLOWED)

@@ -114,3 +114,17 @@ class CategoriaViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['nombre', 'descripcion']
     ordering_fields = ['id', 'nombre']
+
+
+# ---------------------------------------------------------------------------
+# Lab 12 Ej 11 - Productos de solo lectura para los desplegables del panel (GET /api/productos/)
+# ---------------------------------------------------------------------------
+from ..serializer import ProductoSerializer
+
+
+class ProductoViewSet(viewsets.ReadOnlyModelViewSet):
+    """Solo list y retrieve (200 / 404): el panel necesita el nombre y los meses de garantía para el formulario."""
+    queryset = Producto.objects.select_related('categoria', 'ficha_tecnica').order_by('nombre')
+    serializer_class = ProductoSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['nombre', 'codigo_sku']

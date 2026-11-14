@@ -2,7 +2,7 @@
 // (map + key = id). Solo pasa las funciones hacia abajo; no cambia nada por sí mismo.
 import FilaEquipo from './FilaEquipo.jsx'
 
-function ListadoEquipos({ equipos, onEliminar, onCambiarEstado, busqueda = '' }) {
+function ListadoEquipos({ equipos, onEditar, onEliminar, onCambiarEstado, busqueda = '' }) {
   return (
     <div>
       <h3>Equipos instalados ({equipos.length})</h3>
@@ -11,7 +11,7 @@ function ListadoEquipos({ equipos, onEliminar, onCambiarEstado, busqueda = '' })
       {equipos.length === 0 && busqueda !== '' && <p className="vacio">No hay equipos que coincidan con «{busqueda}»</p>}
       <ul className="lista">
         {equipos.map((e) => (
-          <FilaEquipo key={e.id} equipo={e} onEliminar={onEliminar} onCambiarEstado={onCambiarEstado} />
+          <FilaEquipo key={e.id} equipo={e} onEditar={onEditar} onEliminar={onEliminar} onCambiarEstado={onCambiarEstado} />
         ))}
       </ul>
     </div>
