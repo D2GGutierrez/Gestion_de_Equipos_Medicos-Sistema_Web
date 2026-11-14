@@ -132,3 +132,32 @@ def registrar_instalacion(request):
         'productos': Producto.objects.por_nombre(),
         'ultimos_equipos': EquipoInstalado.objects.select_related('producto', 'cliente').order_by('-id')[:5],
     })
+
+
+# ---------------------------------------------------------------------------
+# Lab 12 Ej 9 - API REST de Equipos Instalados (entidad principal del panel administrativo)
+#   GET/POST /api/equipos/   GET/PUT/PATCH/DELETE /api/equipos/<id>/
+#   Parámetros: ?search=texto  ?ordering=-fecha_instalacion  ?estado=OPERATIVO  ?cliente=<id>  ?producto=<id>
+# ---------------------------------------------------------------------------
+from rest_framework import filters, viewsets
+from ..serializer import EquipoInstaladoSerializer
+
+
+class EquipoInstaladoViewSet(viewsets.ModelViewSet):
+    """list/create/retrieve/update/partial_update/destroy -> 200, 201, 400, 404, 204."""
+    serializer_class = EquipoInstaladoSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['numero_serie', 'producto__nombre', 'cliente__razon_social']
+    ordering_fields = ['id', 'numero_serie', 'fecha_instalacion', 'fin_garantia']
+    ordering = ['id']
+
+    def get_queryset(self):
+        equipos = EquipoInstalado.objects.select_related('producto', 'cliente')
+        estado = self.request.query_params.get('estado')
+        if estado:
+            equipos = equipos.filter(estado=estado.upper())
+        for parametro in ('cliente', 'producto'):
+            valor = self.request.query_params.get(parametro)
+            if valor and valor.isdigit():
+                equipos = equipos.filter(**{f'{parametro}_id': valor})
+        return equipos

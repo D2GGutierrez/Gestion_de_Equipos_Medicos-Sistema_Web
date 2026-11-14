@@ -7,6 +7,7 @@ router.register(r'categorias', productos.CategoriaViewSet, basename='categoria')
 router.register(r'clientes', clientes.ClienteViewSet, basename='cliente')
 router.register(r'tickets-detalle', tickets.TicketDetalleViewSet, basename='ticket-detalle')
 router.register(r'clientes-equipos', clientes.ClienteConEquiposViewSet, basename='cliente-equipos')
+router.register(r'equipos', equipos.EquipoInstaladoViewSet, basename='equipo-api')  # Lab 12 Ej 9
 
 urlpatterns = [
     # Productos

@@ -1,3 +1,4 @@
+import re
 from rest_framework import serializers
 from .models import Cliente
 
@@ -75,6 +76,26 @@ class EquipoInstaladoSerializer(serializers.ModelSerializer):
             'id', 'numero_serie', 'fecha_instalacion', 'fin_garantia', 
             'estado', 'producto', 'producto_nombre', 'cliente', 'cliente_razon_social'
         ]
+
+    # Lab 12 Ej 9: regla de validación propia -> validate_<campo> (la usará el error 400 del panel)
+    def validate_numero_serie(self, value):
+        value = value.strip().upper()
+        if not re.fullmatch(r'[A-Z]{2,4}-\d{4}', value):
+            raise serializers.ValidationError("El número de serie debe tener el formato AAA-0000 (2 a 4 letras, guion y 4 dígitos).")
+        duplicados = EquipoInstalado.objects.filter(numero_serie=value)
+        if self.instance:
+            duplicados = duplicados.exclude(pk=self.instance.pk)
+        if duplicados.exists():
+            raise serializers.ValidationError("Ya existe un equipo con ese número de serie.")
+        return value
+
+    # Validación entre campos: la garantía no puede terminar antes de la instalación
+    def validate(self, datos):
+        instalacion = datos.get('fecha_instalacion', getattr(self.instance, 'fecha_instalacion', None))
+        garantia = datos.get('fin_garantia', getattr(self.instance, 'fin_garantia', None))
+        if instalacion and garantia and garantia < instalacion:
+            raise serializers.ValidationError({'fin_garantia': 'El fin de garantía no puede ser anterior a la fecha de instalación.'})
+        return datos
 
 
 class TicketSoporteSerializer(serializers.ModelSerializer):
