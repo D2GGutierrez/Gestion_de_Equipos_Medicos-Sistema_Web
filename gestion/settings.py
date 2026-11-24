@@ -38,6 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'inventario',
+    'catalogo',  # Lab 13 Ej 6: productos y categorías de la cafetería
+    'pedidos',   # Lab 13 Ej 6: pedidos y sus detalles
     'rest_framework',
     'corsheaders',  # Lab 12 Ej 2: permite que React (otro origen) llame a la API
 ]
